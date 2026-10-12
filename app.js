@@ -218,4 +218,6 @@ $("progress").addEventListener("input", e => {
 audio.addEventListener("ended", () => stepSong(1));
 audio.addEventListener("play", () => $("playBtn").textContent = "Ⅱ");
 audio.addEventListener("pause", () => $("playBtn").textContent = "▶");
+renderGenres();
+renderGenreCards();
 loadSongs();
