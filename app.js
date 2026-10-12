@@ -8,29 +8,52 @@ let favoritesOnly = false;
 
 const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Piseiro", "Forró", "Pagode", "Phonk", "Brazilian Phonk", "Eletrofunk", "Reggaeton", "Pop", "Techno", "Deep House", "Drill", "Arrocha"];
 
+function normalizeGenre(value) {
+  return String(value || "")
+    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/%20/g, " ").replace(/[._-]+/g, " ")
+    .replace(/\\+/g, " ").replace(/\\s+/g, " ").trim();
+}
+
 function classifySong(song) {
-  const rawGenre = String(song.genre || song.gênero || song.genero || song.category || "").toLocaleLowerCase("pt-BR");
-  const details = [rawGenre, song.title, song.artist, song.audioUrl, song.key, song.name].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
-  // As categorias mais específicas são verificadas antes das mais amplas.
-  if (/brazilian[\s_-]*phonk|phonk[\s_-]*brasileiro/.test(details)) return "Brazilian Phonk";
-  if (/mega[\s_-]*funk|megafunk/.test(details)) return "Mega funk";
-  if (/eletro[\s_-]*funk|electro[\s_-]*funk/.test(details)) return "Eletrofunk";
-  if (/deep[\s_-]*house/.test(details)) return "Deep House";
-  if (/\bdrill\b/.test(details)) return "Drill";
-  if (/\bphonk\b/.test(details)) return "Phonk";
-  if (/\btechno\b/.test(details)) return "Techno";
-  if (/reggaeton|reguet[oó]n/.test(details)) return "Reggaeton";
-  if (/\barrocha\b/.test(details)) return "Arrocha";
-  if (/\bpiseiro\b|pisadinha/.test(details)) return "Piseiro";
-  if (/forr[oó]|\bxote\b|bai[aã]o/.test(details)) return "Forró";
-  if (/pagode|\bsamba\b/.test(details)) return "Pagode";
-  if (/\bpop\b|pop[\s_-]*rock/.test(details)) return "Pop";
-  if (/sertanejo|mod[aã]o|universit[aá]rio|sofr[eê]ncia/.test(details)) return "Sertanejo";
-  if (/\btrap\b/.test(details)) return "Trap";
-  if (/\brap\b|hip[\s-]*hop|boom[\s-]*bap/.test(details)) return "Rap";
-  if (/\bhouse\b/.test(details)) return "House";
-  if (/\bfunk\b|mandel[aã]o|ostenta[cç][aã]o/.test(details)) return "Funk";
-  return "Outros";
+  // Prioriza o gênero cadastrado e as pastas do caminho do arquivo.
+  const explicit = normalizeGenre(song.genre || song.gênero || song.genero || song.category);
+  const urlPath = String(song.audioUrl || song.url || "").split(/[?#]/)[0];
+  let decodedPath = urlPath;
+  try { decodedPath = decodeURIComponent(urlPath); } catch (_) {}
+  const folders = decodedPath.split("/").filter(Boolean).slice(0, -1).reverse().map(normalizeGenre);
+  const aliases = [
+    ["brazilian phonk", "Brazilian Phonk"], ["phonk brasileiro", "Brazilian Phonk"],
+    ["mega funk", "Mega funk"], ["megafunk", "Mega funk"],
+    ["eletrofunk", "Eletrofunk"], ["eletro funk", "Eletrofunk"], ["electro funk", "Eletrofunk"],
+    ["deep house", "Deep House"], ["drill", "Drill"], ["phonk", "Phonk"],
+    ["techno", "Techno"], ["reggaeton", "Reggaeton"], ["regueton", "Reggaeton"],
+    ["arrocha", "Arrocha"], ["piseiro", "Piseiro"], ["pisadinha", "Piseiro"],
+    ["forro", "Forró"], ["xote", "Forró"], ["baiao", "Forró"],
+    ["pagode", "Pagode"], ["samba", "Pagode"], ["sertanejo", "Sertanejo"],
+    ["modao", "Sertanejo"], ["sofrencia", "Sertanejo"], ["trap", "Trap"],
+    ["rap", "Rap"], ["hip hop", "Rap"], ["boom bap", "Rap"],
+    ["house", "House"], ["funk", "Funk"], ["mandelao", "Funk"],
+    ["pop", "Pop"]
+  ];
+  const matchGenre = value => {
+    const normalized = normalizeGenre(value);
+    const exact = aliases.find(([alias]) => normalized === alias);
+    if (exact) return exact[1];
+    const contained = aliases.find(([alias]) => normalized.includes(alias));
+    return contained ? contained[1] : null;
+  };
+  const explicitMatch = matchGenre(explicit);
+  if (explicitMatch) return explicitMatch;
+  for (const folder of folders) {
+    const folderMatch = matchGenre(folder);
+    if (folderMatch) return folderMatch;
+  }
+  const details = normalizeGenre([song.title, song.artist, song.key, song.name].filter(Boolean).join(" "));
+  // Tenta pelo nome/título somente quando não há gênero nem pasta identificável.
+  const detailMatch = matchGenre(details);
+  return detailMatch || "Outros";
 }
 
 
