@@ -2,3 +2,39 @@
 
 /* Cartões visuais de gêneros */
 .genre-cards-section{margin-top:14px}.genre-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}.genre-card{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:142px;padding:15px;border:1px solid #393047;border-radius:15px;background:var(--genre-bg,#211a34);color:#fff;text-align:left;cursor:pointer;transition:transform .18s ease,border-color .18s ease,filter .18s ease}.genre-card:before{content:"";position:absolute;z-index:-1;width:110px;height:110px;right:-25px;top:-22px;border-radius:50%;background:#fff;opacity:.08}.genre-card:hover,.genre-card.active{transform:translateY(-2px);border-color:#b7a0ff;filter:brightness(1.12)}.genre-card-art{display:grid;place-items:center;width:43px;height:43px;border-radius:12px;background:#ffffff1c;border:1px solid #ffffff24;color:#eee5ff;font-size:27px}.genre-card-name{font:700 14px Outfit,sans-serif;max-width:100%;overflow-wrap:anywhere}.genre-card-count{font-size:10px;color:#d1c7e5}.genre-card-play{position:absolute;right:12px;bottom:12px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#ffffff20;color:#fff;font-size:10px}@media(max-width:650px){.genre-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.genre-card{min-height:125px;padding:12px}.genre-card-art{width:37px;height:37px;font-size:23px}.genre-card-name{font-size:13px}}
+
+/* Redesign: seções por gênero e capas com mais presença */
+.genre-chips{margin-bottom:18px}
+.genre-cards-section{margin-top:20px;margin-bottom:10px}
+.genre-cards{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.genre-card{min-height:176px;padding:18px;border-radius:18px;box-shadow:inset 0 1px 0 #ffffff18;transition:transform .2s,border-color .2s,box-shadow .2s}
+.genre-card:after{content:"";position:absolute;z-index:-1;width:145px;height:145px;right:-28px;bottom:-48px;border:1px solid #ffffff20;border-radius:50%;box-shadow:0 0 0 15px #ffffff08,0 0 0 30px #ffffff05}
+.genre-card-art{width:55px;height:55px;border-radius:16px;font-size:34px;background:#ffffff20;box-shadow:0 8px 24px #0002}
+.genre-card-name{font-size:16px;margin-top:4px}
+.genre-card-count{font-size:11px}
+.genre-card-play{width:34px;height:34px;background:#f7f2ff;color:#211735;box-shadow:0 5px 15px #0003}
+.genre-shelf{margin:28px 0 34px;padding:0 0 22px;border-bottom:1px solid #292536}
+.genre-shelf-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
+.shelf-kicker{font-size:9px;letter-spacing:1.8px;color:#9e8bc9;font-weight:700}
+.genre-shelf-head h3{font:700 24px Outfit,sans-serif;letter-spacing:-.6px;margin:4px 0 0}
+.see-genre{border:1px solid #393148;background:#1a1722;color:#d4c6ff;border-radius:9px;padding:9px 12px;font:600 11px 'DM Sans';cursor:pointer;white-space:nowrap}
+.see-genre span{margin-left:5px}
+.shelf-track-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.shelf-track-list .song-row{min-width:0;background:#14131c;border:1px solid #252231;padding:11px;border-radius:13px}
+.shelf-track-list .song-row:hover,.shelf-track-list .song-row.playing{background:#201a2c;border-color:#6e55a1}
+.song-cover{position:relative;overflow:hidden;background:var(--cover-bg,linear-gradient(135deg,#7148d8,#21143d));color:white;box-shadow:inset 0 1px 0 #ffffff30}
+.song-cover:after{content:"";position:absolute;width:48px;height:48px;border:1px solid #ffffff35;border-radius:50%;right:-19px;bottom:-20px;box-shadow:0 0 0 7px #ffffff10}
+.song-cover span{position:relative;z-index:1;text-shadow:0 2px 8px #0005}
+.song-row{transition:background .15s,border-color .15s}
+@media(max-width:900px){.genre-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.shelf-track-list{grid-template-columns:1fr}}
+@media(max-width:650px){
+ .genre-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .genre-card{min-height:150px;padding:14px;border-radius:15px}
+ .genre-card-art{width:47px;height:47px;font-size:29px}
+ .genre-card-name{font-size:14px}
+ .genre-shelf{margin:24px 0 27px;padding-bottom:19px}
+ .genre-shelf-head h3{font-size:21px}
+ .shelf-track-list{grid-template-columns:1fr;gap:7px}
+ .shelf-track-list .song-row{grid-template-columns:43px minmax(0,1fr) 34px;gap:11px;padding:10px}
+ .shelf-track-list .song-genre{display:none}
+}
