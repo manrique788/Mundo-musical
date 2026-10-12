@@ -6,17 +6,27 @@ let currentIndex = -1;
 let selectedGenre = "Todos";
 let favoritesOnly = false;
 
-const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House"];
-
-function classifySong(song) {
+const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Pfunction classifySong(song) {
   const rawGenre = String(song.genre || song.gênero || song.genero || song.category || "").toLocaleLowerCase("pt-BR");
   const details = [rawGenre, song.title, song.artist, song.audioUrl, song.key, song.name].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
-  // Mega funk vem antes de Funk para não cair na categoria mais ampla.
+  // As categorias mais específicas precisam ser verificadas antes das mais amplas.
+  if (/brazilian[\s_-]*phonk|phonk[\s_-]*brasileiro/.test(details)) return "Brazilian Phonk";
   if (/mega[\s_-]*funk|megafunk/.test(details)) return "Mega funk";
+  if (/eletro[\s_-]*funk|electro[\s_-]*funk/.test(details)) return "Eletrofunk";
+  if (/deep[\s_-]*house/.test(details)) return "Deep House";
+  if (/\bdrill\b/.test(details)) return "Drill";
+  if (/\bphonk\b/.test(details)) return "Phonk";
+  if (/\btechno\b/.test(details)) return "Techno";
+  if (/reggaeton|reguet[oó]n/.test(details)) return "Reggaeton";
+  if (/\barrocha\b/.test(details)) return "Arrocha";
+  if (/\bpiseiro\b|pisadinha/.test(details)) return "Piseiro";
+  if (/forr[oó]|\bxote\b|bai[aã]o/.test(details)) return "Forró";
+  if (/pagode|\bsamba\b/.test(details)) return "Pagode";
+  if (/\bpop\b|pop[\s_-]*rock/.test(details)) return "Pop";
   if (/sertanejo|mod[aã]o|universit[aá]rio|sofr[eê]ncia/.test(details)) return "Sertanejo";
   if (/\btrap\b/.test(details)) return "Trap";
   if (/\brap\b|hip[\s-]*hop|boom[\s-]*bap/.test(details)) return "Rap";
-  if (/\bhouse\b|deep[\s-]*house|tech[\s-]*house/.test(details)) return "House";
+  if (/\bhouse\b/.test(details)) return "House";
   if (/\bfunk\b|mandel[aã]o|ostenta[cç][aã]o/.test(details)) return "Funk";
   return "Outros";
 }
