@@ -71,10 +71,10 @@
   </div>
 
   <footer class="player">
-    <div class="now-playing">
+    <button class="now-playing" id="openPlayerBtn" type="button" aria-label="Abrir reprodutor completo">
       <div class="cover-small" id="currentCover">♫</div>
       <div class="track-meta"><strong id="currentTitle">Escolha uma música</strong><span id="currentArtist">Sua próxima favorita começa aqui</span></div>
-    </div>
+    </button>
     <div class="player-center">
       <div class="player-controls">
         <button id="prevBtn" title="Anterior" aria-label="Anterior">⏮</button>
@@ -86,6 +86,18 @@
     <div class="player-right"><span>🔊</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"></div>
     <audio id="audio" preload="metadata"></audio>
   </footer>
-  <script src="app.js?v=4"></script>
+  <div class="player-overlay" id="playerOverlay" aria-hidden="true">
+    <section class="expanded-player" role="dialog" aria-modal="true" aria-label="Reprodutor de música">
+      <button class="player-close" id="closePlayerBtn" aria-label="Fechar reprodutor">⌄</button>
+      <div class="expanded-cover" id="expandedCover">♫</div>
+      <div class="expanded-label">TOCANDO AGORA</div>
+      <h2 id="expandedTitle">Escolha uma música</h2>
+      <p id="expandedArtist">Sua próxima favorita começa aqui</p>
+      <div class="expanded-progress"><span id="expandedCurrentTime">0:00</span><input id="expandedProgress" type="range" min="0" max="100" value="0" aria-label="Progresso da música"><span id="expandedDuration">0:00</span></div>
+      <div class="expanded-controls"><button id="expandedPrevBtn" aria-label="Música anterior">⏮</button><button id="expandedPlayBtn" aria-label="Reproduzir ou pausar">▶</button><button id="expandedNextBtn" aria-label="Próxima música">⏭</button></div>
+      <div class="expanded-volume"><span>🔊 Volume</span><input id="expandedVolume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"></div>
+    </section>
+  </div>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
