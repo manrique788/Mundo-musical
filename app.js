@@ -6,10 +6,12 @@ let currentIndex = -1;
 let selectedGenre = "Todos";
 let favoritesOnly = false;
 
-const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Pfunction classifySong(song) {
+const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Piseiro", "Forró", "Pagode", "Phonk", "Brazilian Phonk", "Eletrofunk", "Reggaeton", "Pop", "Techno", "Deep House", "Drill", "Arrocha"];
+
+function classifySong(song) {
   const rawGenre = String(song.genre || song.gênero || song.genero || song.category || "").toLocaleLowerCase("pt-BR");
   const details = [rawGenre, song.title, song.artist, song.audioUrl, song.key, song.name].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
-  // As categorias mais específicas precisam ser verificadas antes das mais amplas.
+  // As categorias mais específicas são verificadas antes das mais amplas.
   if (/brazilian[\s_-]*phonk|phonk[\s_-]*brasileiro/.test(details)) return "Brazilian Phonk";
   if (/mega[\s_-]*funk|megafunk/.test(details)) return "Mega funk";
   if (/eletro[\s_-]*funk|electro[\s_-]*funk/.test(details)) return "Eletrofunk";
