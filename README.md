@@ -17,12 +17,12 @@ Para reprodução pelo navegador, cada `audioUrl` precisa ser uma URL HTTPS aces
 ## Formato de songs.json
 Substitua o conteúdo `[]` por uma lista como esta, usando URLs reais dos seus próprios arquivos:
 ```json
-  [
+[
   {
-    "title": "MEGA SANFONINHA",
-    "artist": "Artista não informado",
-    "genre": "Forró",
-    "audioUrl": "https://pub-ebe4b2f7bdd748d795783e0144838b16.r2.dev/01%20-%20MEGA%20SANFONINHA%20%20.mp3"
+    "title": "Nome da música",
+    "artist": "Artista",
+    "genre": "Gênero",
+    "audioUrl": "https://pub-ebe4b2f7bdd748d795783e0144838b16.r2.dev/nome-do-arquivo.mp3"
   }
 ]
 
