@@ -140,7 +140,7 @@ document.addEventListener("click", event => {
   const genreButton = event.target.closest("[data-genre]");
   if (genreButton) {
     selectedGenre = genreButton.dataset.genre;
-    renderGenres(); renderSongs();
+    renderGenres(); renderGenreCards(); renderSongs();
     return;
   }
   const playButton = event.target.closest("[data-play]");
