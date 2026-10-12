@@ -6,6 +6,22 @@ let currentIndex = -1;
 let selectedGenre = "Todos";
 let favoritesOnly = false;
 
+const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House"];
+
+function classifySong(song) {
+  const rawGenre = String(song.genre || song.gênero || song.genero || song.category || "").toLocaleLowerCase("pt-BR");
+  const details = [rawGenre, song.title, song.artist, song.audioUrl, song.key, song.name].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
+  // Mega funk vem antes de Funk para não cair na categoria mais ampla.
+  if (/mega[\s_-]*funk|megafunk/.test(details)) return "Mega funk";
+  if (/sertanejo|mod[aã]o|universit[aá]rio|sofr[eê]ncia/.test(details)) return "Sertanejo";
+  if (/\btrap\b/.test(details)) return "Trap";
+  if (/\brap\b|hip[\s-]*hop|boom[\s-]*bap/.test(details)) return "Rap";
+  if (/\bhouse\b|deep[\s-]*house|tech[\s-]*house/.test(details)) return "House";
+  if (/\bfunk\b|mandel[aã]o|ostenta[cç][aã]o/.test(details)) return "Funk";
+  return "Outros";
+}
+
+
 const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const formatTime = seconds => {
   if (!Number.isFinite(seconds)) return "0:00";
@@ -33,7 +49,7 @@ async function loadSongs() {
     songs = allSongs
       .map(s => ({
         ...s,
-        genre: s.genre || s.gênero || "Outros",
+        genre: classifySong(s),
         audioUrl: String(s.audioUrl || "").replace(/\s+\//g, "/")
       }))
       .filter(s => s && s.title && s.audioUrl);
@@ -52,7 +68,7 @@ async function loadSongs() {
 }
 
 function genres() {
-  return [...new Set(songs.map(s => s.genre || "Outros"))].sort((a,b) => a.localeCompare(b,"pt-BR"));
+  return CATEGORIES;
 }
 function renderGenres() {
   const all = ["Todos", ...genres()];
@@ -71,7 +87,7 @@ function renderGenreCards() {
   const target = $("genreCards");
   if (!target) return;
   target.innerHTML = list.map((g, i) => {
-    const count = songs.filter(s => (s.genre || "Outros") === g).length;
+    const count = songs.filter(s => s.genre === g).length;
     return `<button class="genre-card ${g===selectedGenre?"active":""}" data-genre="${escapeHtml(g)}" style="--genre-bg:${palettes[i % palettes.length]}">
       <span class="genre-card-art" aria-hidden="true">${symbols[i % symbols.length]}</span>
       <span class="genre-card-name">${escapeHtml(g)}</span>
@@ -119,7 +135,7 @@ function renderSongs() {
     return;
   }
 
-  const grouped = genres().map(g => ({
+  const grouped = [...genres(), "Outros"].map(g => ({
     name: g,
     tracks: visibleSongs.filter(s => (s.genre || "Outros") === g)
   })).filter(group => group.tracks.length);
