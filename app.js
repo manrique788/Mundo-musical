@@ -40,6 +40,7 @@ async function loadSongs() {
 
     if (!songs.length) throw new Error("Catálogo vazio");
     renderGenres();
+    renderGenreCards();
     renderSongs();
     $("trackCount").textContent = `${songs.length} músicas disponíveis`;
   } catch (error) {
@@ -57,6 +58,27 @@ function renderGenres() {
   const all = ["Todos", ...genres()];
   $("genreChips").innerHTML = all.map(g => `<button class="chip ${g===selectedGenre?"selected":""}" data-genre="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join("");
   $("sideGenres").innerHTML = genres().slice(0,12).map(g => `<button class="side-genre" data-genre="${escapeHtml(g)}">♫ &nbsp; ${escapeHtml(g)}</button>`).join("");
+}
+
+function renderGenreCards() {
+  const palettes = [
+    "linear-gradient(135deg,#5632a8,#1a1735)", "linear-gradient(135deg,#a13c72,#30162f)",
+    "linear-gradient(135deg,#147d86,#102c3d)", "linear-gradient(135deg,#a45c23,#392018)",
+    "linear-gradient(135deg,#315ca7,#171f45)", "linear-gradient(135deg,#39834f,#132b22)"
+  ];
+  const symbols = ["♫","♪","♬","𝄞","🎧","♩"];
+  const list = genres();
+  const target = $("genreCards");
+  if (!target) return;
+  target.innerHTML = list.map((g, i) => {
+    const count = songs.filter(s => (s.genre || "Outros") === g).length;
+    return `<button class="genre-card ${g===selectedGenre?"active":""}" data-genre="${escapeHtml(g)}" style="--genre-bg:${palettes[i % palettes.length]}">
+      <span class="genre-card-art" aria-hidden="true">${symbols[i % symbols.length]}</span>
+      <span class="genre-card-name">${escapeHtml(g)}</span>
+      <span class="genre-card-count">${count} ${count === 1 ? "música" : "músicas"}</span>
+      <span class="genre-card-play" aria-hidden="true">▶</span>
+    </button>`;
+  }).join("");
 }
 function renderSongs() {
   const query = $("searchInput").value.trim().toLocaleLowerCase("pt-BR");
