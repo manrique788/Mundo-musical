@@ -163,6 +163,21 @@ function renderSongs() {
   `).join("");
 }
 
+function syncExpandedPlayer() {
+  $("expandedTitle").textContent = currentIndex >= 0 && songs[currentIndex] ? songs[currentIndex].title : "Escolha uma música";
+  $("expandedArtist").textContent = currentIndex >= 0 && songs[currentIndex] ? (songs[currentIndex].artist || "Artista desconhecido") : "Sua próxima favorita começa aqui";
+  $("expandedPlayBtn").textContent = audio.paused ? "▶" : "Ⅱ";
+  $("expandedCover").textContent = "♫";
+}
+function openExpandedPlayer() {
+  syncExpandedPlayer();
+  $("playerOverlay").classList.add("open");
+  $("playerOverlay").setAttribute("aria-hidden","false");
+}
+function closeExpandedPlayer() {
+  $("playerOverlay").classList.remove("open");
+  $("playerOverlay").setAttribute("aria-hidden","true");
+}
 function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
@@ -173,6 +188,7 @@ function playSong(index) {
     $("currentArtist").textContent = song.artist || "Artista desconhecido";
     $("currentCover").textContent = "♫";
     $("playBtn").textContent = "Ⅱ";
+    syncExpandedPlayer();
     renderSongs();
   }).catch(() => {
     $("currentTitle").textContent = song.title;
@@ -223,13 +239,25 @@ audio.addEventListener("timeupdate", () => {
   $("currentTime").textContent = formatTime(audio.currentTime);
   $("duration").textContent = formatTime(audio.duration);
   $("progress").value = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+  $("expandedCurrentTime").textContent = formatTime(audio.currentTime);
+  $("expandedDuration").textContent = formatTime(audio.duration);
+  $("expandedProgress").value = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
 });
+$("expandedProgress").addEventListener("input", e => { if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration; });
+$("expandedVolume").addEventListener("input", e => { audio.volume = Number(e.target.value); $("volume").value = e.target.value; });
+$("openPlayerBtn").addEventListener("click", openExpandedPlayer);
+$("closePlayerBtn").addEventListener("click", closeExpandedPlayer);
+$("playerOverlay").addEventListener("click", e => { if (e.target.id === "playerOverlay") closeExpandedPlayer(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeExpandedPlayer(); });
+$("expandedPlayBtn").addEventListener("click", togglePlay);
+$("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
+$("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("progress").addEventListener("input", e => {
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
 });
 audio.addEventListener("ended", () => stepSong(1));
-audio.addEventListener("play", () => $("playBtn").textContent = "Ⅱ");
-audio.addEventListener("pause", () => $("playBtn").textContent = "▶");
+audio.addEventListener("play", () => { $("playBtn").textContent = "Ⅱ"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ"; });
+audio.addEventListener("pause", () => { $("playBtn").textContent = "▶"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "▶"; });
 renderGenres();
 renderGenreCards();
 loadSongs();
