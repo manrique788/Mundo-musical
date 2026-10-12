@@ -19,10 +19,16 @@ Substitua o conteúdo `[]` por uma lista como esta, usando URLs reais dos seus p
 ```json
 [
   {
-    "title": "Nome da música",
-    "artist": "Nome do artista",
-    "genre": "Pop",
-    "audioUrl": "https://SEU-DOMINIO-PUBLICO/arquivo.mp3"
+
+[
+  {
+    "title": "MEGA SANFONINHA",
+    "artist": "Artista não informado",
+    "genre": "Forró",
+    "audioUrl": "https://pub-ebe4b2f7bdd748d795783e0144838b16.r2.dev/01%20-%20MEGA%20SANFONINHA%20%20.mp3"
+  }
+]
+
   }
 ]
 ```
