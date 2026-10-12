@@ -87,23 +87,54 @@ function renderSongs() {
     const searchable = [s.title,s.artist,s.genre].join(" ").toLocaleLowerCase("pt-BR");
     return matchesGenre && searchable.includes(query);
   });
-  $("listTitle").textContent = selectedGenre === "Todos" ? "Todas as músicas" : selectedGenre;
-  $("trackCount").textContent = `${visibleSongs.length} ${visibleSongs.length === 1 ? "faixa" : "faixas"}`;
+  $("listTitle").textContent = selectedGenre === "Todos" ? (query ? "Resultados da busca" : "Explore todas as músicas") : selectedGenre;
+  $("trackCount").textContent = `${visibleSongs.length} ${visibleSongs.length === 1 ? "música" : "músicas"}`;
   if (!visibleSongs.length) {
     $("songList").innerHTML = `<div class="empty-card">Nenhuma música encontrada com esse filtro.</div>`;
     return;
   }
-  $("songList").innerHTML = visibleSongs.slice(0,300).map((s, i) => {
+
+  const palettes = [
+    "linear-gradient(135deg,#7148d8,#21143d)",
+    "linear-gradient(135deg,#d44d88,#421b43)",
+    "linear-gradient(135deg,#159ca0,#143b51)",
+    "linear-gradient(135deg,#d07b36,#4a251f)",
+    "linear-gradient(135deg,#4d77d5,#202653)",
+    "linear-gradient(135deg,#4da66b,#183a31)"
+  ];
+  const renderRow = (s, i) => {
     const originalIndex = songs.indexOf(s);
     const isPlaying = currentIndex === originalIndex && !audio.paused;
+    const palette = palettes[(originalIndex < 0 ? i : originalIndex) % palettes.length];
     return `<div class="song-row ${isPlaying?"playing":""}" data-index="${originalIndex}">
-      <div class="song-cover">♫</div>
+      <div class="song-cover" style="--cover-bg:${palette}"><span>♫</span></div>
       <div class="song-info"><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.artist || "Artista desconhecido")}</span></div>
       <span class="song-genre">${escapeHtml(s.genre || "Outros")}</span>
       <button class="song-play" data-play="${originalIndex}" aria-label="Reproduzir ${escapeHtml(s.title)}">${isPlaying?"Ⅱ":"▶"}</button>
     </div>`;
-  }).join("");
+  };
+
+  if (selectedGenre !== "Todos" || query) {
+    $("songList").innerHTML = visibleSongs.map(renderRow).join("");
+    return;
+  }
+
+  const grouped = genres().map(g => ({
+    name: g,
+    tracks: visibleSongs.filter(s => (s.genre || "Outros") === g)
+  })).filter(group => group.tracks.length);
+
+  $("songList").innerHTML = grouped.map((group, groupIndex) => `
+    <section class="genre-shelf">
+      <div class="genre-shelf-head">
+        <div><span class="shelf-kicker">EXPLORE O ESTILO</span><h3>${escapeHtml(group.name)}</h3></div>
+        <button class="see-genre" data-genre="${escapeHtml(group.name)}">Ver todas <span>→</span></button>
+      </div>
+      <div class="shelf-track-list">${group.tracks.map(renderRow).join("")}</div>
+    </section>
+  `).join("");
 }
+
 function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
