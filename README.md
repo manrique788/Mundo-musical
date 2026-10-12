@@ -20,12 +20,11 @@ Substitua o conteúdo `[]` por uma lista como esta, usando URLs reais dos seus p
 [
   {
     "title": "Nome da música",
-    "artist": "Artista",
-    "genre": "Gênero",
-    "audioUrl": "https://pub-ebe4b2f7bdd748d795783e0144838b16.r2.dev/nome-do-arquivo.mp3"
+    "artist": "Nome do artista",
+    "genre": "Pop",
+    "audioUrl": "https://SEU-DOMINIO-PUBLICO/arquivo.mp3"
   }
 ]
-
 ```
 Não use links de exemplo como se fossem faixas reais. Não publique música sem os direitos e licenças necessários.
 
