@@ -17,8 +17,7 @@ Para reprodução pelo navegador, cada `audioUrl` precisa ser uma URL HTTPS aces
 ## Formato de songs.json
 Substitua o conteúdo `[]` por uma lista como esta, usando URLs reais dos seus próprios arquivos:
 ```json
-  
-[
+  [
   {
     "title": "MEGA SANFONINHA",
     "artist": "Artista não informado",
