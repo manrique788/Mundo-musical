@@ -51,10 +51,9 @@ function classifySong(song) {
     const folderMatch = matchGenre(folder);
     if (folderMatch) return folderMatch;
   }
-  const details = normalizeGenre([song.title, song.artist, song.key, song.name].filter(Boolean).join(" "));
-  // Tenta pelo nome/título somente quando não há gênero nem pasta identificável.
-  const detailMatch = matchGenre(details);
-  return detailMatch || "Outros";
+  // Não deduzir gênero pelo título ou artista: isso mistura estilos diferentes.
+  // Sem gênero cadastrado ou pasta identificável, deixar em "Outros".
+  return "Outros";
 }
 
 
