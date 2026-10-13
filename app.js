@@ -6,54 +6,22 @@ let currentIndex = -1;
 let selectedGenre = "Todos";
 let favoritesOnly = false;
 
-const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Piseiro", "Forró", "Pagode", "Phonk", "Brazilian Phonk", "Eletrofunk", "Reggaeton", "Pop", "Techno", "Deep House", "Drill", "Arrocha", "Brega funk", "Gospel"];
-
-function normalizeGenre(value) {
-  return String(value || "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .replace(/%20/g, " ").replace(/[._-]+/g, " ")
-    .replace(/\+/g, " ").replace(/\s+/g, " ").trim();
-}
-
 function classifySong(song) {
-  // Prioriza o gênero cadastrado e as pastas do caminho do arquivo.
-  const explicit = normalizeGenre(song.genre || song.gênero || song.genero || song.category);
-  const urlPath = String(song.audioUrl || song.url || "").split(/[?#]/)[0];
-  let decodedPath = urlPath;
-  try { decodedPath = decodeURIComponent(urlPath); } catch (_) {}
-  const folders = decodedPath.split("/").filter(Boolean).slice(0, -1).reverse().map(normalizeGenre);
-  const aliases = [
-    ["brazilian phonk", "Brazilian Phonk"], ["phonk brasileiro", "Brazilian Phonk"],
-    ["brega funk", "Brega funk"], ["bregafunk", "Brega funk"], ["gospel", "Gospel"], ["louvor", "Gospel"],
-    ["mega funk", "Mega funk"], ["megafunk", "Mega funk"],
-    ["eletrofunk", "Eletrofunk"], ["eletro funk", "Eletrofunk"], ["electro funk", "Eletrofunk"],
-    ["deep house", "Deep House"], ["drill", "Drill"], ["phonk", "Phonk"],
-    ["techno", "Techno"], ["reggaeton", "Reggaeton"], ["regueton", "Reggaeton"],
-    ["arrocha", "Arrocha"], ["piseiro", "Piseiro"], ["pisadinha", "Piseiro"],
-    ["forro", "Forró"], ["xote", "Forró"], ["baiao", "Forró"],
-    ["pagode", "Pagode"], ["samba", "Pagode"], ["sertanejo", "Sertanejo"],
-    ["modao", "Sertanejo"], ["sofrencia", "Sertanejo"], ["trap", "Trap"],
-    ["rap", "Rap"], ["hip hop", "Rap"], ["boom bap", "Rap"],
-    ["house", "House"], ["funk", "Funk"], ["mandelao", "Funk"],
-    ["pop", "Pop"]
-  ];
-  const matchGenre = value => {
-    const normalized = normalizeGenre(value);
-    const exact = aliases.find(([alias]) => normalized === alias);
-    if (exact) return exact[1];
-    const contained = aliases.find(([alias]) => normalized.includes(alias));
-    return contained ? contained[1] : null;
-  };
-  const explicitMatch = matchGenre(explicit);
-  if (explicitMatch) return explicitMatch;
-  for (const folder of folders) {
-    const folderMatch = matchGenre(folder);
-    if (folderMatch) return folderMatch;
+  // Usa a pasta real do arquivo no caminho armazenado no Cloudflare.
+  const rawPath = String(song.audioUrl || song.url || song.key || song.name || "").split(/[?#]/)[0];
+  let decodedPath = rawPath;
+  try { decodedPath = decodeURIComponent(rawPath); } catch (_) {}
+  const parts = decodedPath.split("/").filter(Boolean);
+  const filename = String(song.title || "").toLowerCase();
+  // Se o caminho termina no nome do arquivo, a pasta imediatamente anterior é a categoria.
+  if (parts.length >= 2) {
+    const parent = parts[parts.length - 2];
+    if (parent && !/^https?:$/i.test(parent) && parent !== "catalog") return parent;
   }
-  // Não deduzir gênero pelo título ou artista: isso mistura estilos diferentes.
-  // Sem gênero cadastrado ou pasta identificável, deixar em "Outros".
-  return "Outros";
+  // Algumas respostas do catálogo podem fornecer a chave completa separadamente.
+  const key = String(song.key || song.name || "").replace(/\\/g, "/").split("/").filter(Boolean);
+  if (key.length >= 2) return key[key.length - 2];
+  return "Sem pasta";
 }
 
 
@@ -103,7 +71,7 @@ async function loadSongs() {
 }
 
 function genres() {
-  return CATEGORIES;
+  return [...new Set(songs.map(s => s.genre || "Sem pasta"))].sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 function renderGenres() {
   const all = ["Todos", ...genres()];
