@@ -42,7 +42,7 @@ async function loadSongs() {
       const url = new URL(api);
       url.searchParams.set("limit", "1000");
       if (cursor) url.searchParams.set("cursor", cursor);
-      const response = await fetch(url, { cache: "no-store" });
+      const response = await fetch(url, { cache: "default" });
       if (!response.ok) throw new Error("Não foi possível carregar o catálogo");
       const page = await response.json();
       if (Array.isArray(page.songs)) allSongs.push(...page.songs);
@@ -89,8 +89,13 @@ function renderGenreCards() {
   const list = genres();
   const target = $("genreCards");
   if (!target) return;
+  const counts = new Map();
+  for (const song of songs) {
+    const name = song.genre || "Sem pasta";
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
   target.innerHTML = list.map((g, i) => {
-    const count = songs.filter(s => s.genre === g).length;
+    const count = counts.get(g) || 0;
     return `<button class="genre-card ${g===selectedGenre?"active":""}" data-genre="${escapeHtml(g)}" style="--genre-bg:${palettes[i % palettes.length]}">
       <span class="genre-card-art" aria-hidden="true">${symbols[i % symbols.length]}</span>
       <span class="genre-card-name">${escapeHtml(g)}</span>
@@ -173,18 +178,18 @@ function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
   currentIndex = index;
+  $("currentTitle").textContent = song.title;
+  $("currentArtist").textContent = song.artist || "Artista desconhecido";
+  $("currentCover").textContent = "♫";
+  $("playBtn").textContent = "Ⅱ";
+  syncExpandedPlayer();
+  renderSongs();
   audio.src = song.audioUrl;
-  audio.play().then(() => {
-    $("currentTitle").textContent = song.title;
-    $("currentArtist").textContent = song.artist || "Artista desconhecido";
-    $("currentCover").textContent = "♫";
-    $("playBtn").textContent = "Ⅱ";
-    syncExpandedPlayer();
-    renderSongs();
-  }).catch(() => {
-    $("currentTitle").textContent = song.title;
-    $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio.";
+  const playback = audio.play();
+  if (playback && typeof playback.catch === "function") playback.catch(() => {
     $("playBtn").textContent = "▶";
+    $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio.";
+    syncExpandedPlayer();
   });
 }
 function togglePlay() {
