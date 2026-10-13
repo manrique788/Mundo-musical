@@ -6,14 +6,14 @@ let currentIndex = -1;
 let selectedGenre = "Todos";
 let favoritesOnly = false;
 
-const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Piseiro", "Forró", "Pagode", "Phonk", "Brazilian Phonk", "Eletrofunk", "Reggaeton", "Pop", "Techno", "Deep House", "Drill", "Arrocha"];
+const CATEGORIES = ["Funk", "Mega funk", "Sertanejo", "Rap", "Trap", "House", "Piseiro", "Forró", "Pagode", "Phonk", "Brazilian Phonk", "Eletrofunk", "Reggaeton", "Pop", "Techno", "Deep House", "Drill", "Arrocha", "Brega funk", "Gospel"];
 
 function normalizeGenre(value) {
   return String(value || "")
-    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR")
     .replace(/%20/g, " ").replace(/[._-]+/g, " ")
-    .replace(/\\+/g, " ").replace(/\\s+/g, " ").trim();
+    .replace(/\+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function classifySong(song) {
@@ -25,6 +25,7 @@ function classifySong(song) {
   const folders = decodedPath.split("/").filter(Boolean).slice(0, -1).reverse().map(normalizeGenre);
   const aliases = [
     ["brazilian phonk", "Brazilian Phonk"], ["phonk brasileiro", "Brazilian Phonk"],
+    ["brega funk", "Brega funk"], ["bregafunk", "Brega funk"], ["gospel", "Gospel"], ["louvor", "Gospel"],
     ["mega funk", "Mega funk"], ["megafunk", "Mega funk"],
     ["eletrofunk", "Eletrofunk"], ["eletro funk", "Eletrofunk"], ["electro funk", "Eletrofunk"],
     ["deep house", "Deep House"], ["drill", "Drill"], ["phonk", "Phonk"],
