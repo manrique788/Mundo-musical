@@ -201,6 +201,20 @@ function stepSong(delta) {
   const start = currentIndex < 0 ? 0 : currentIndex;
   playSong((start + delta + songs.length) % songs.length);
 }
+function stepFolder(delta) {
+  const folders = genres();
+  if (!folders.length) return;
+  const currentFolder = currentIndex >= 0 && songs[currentIndex] ? (songs[currentIndex].genre || "Sem pasta") : selectedGenre;
+  let folderIndex = folders.indexOf(currentFolder);
+  if (folderIndex < 0) folderIndex = folders.indexOf(selectedGenre);
+  if (folderIndex < 0) folderIndex = 0;
+  const nextFolder = folders[(folderIndex + delta + folders.length) % folders.length];
+  selectedGenre = nextFolder;
+  $("searchInput").value = "";
+  renderGenres(); renderGenreCards(); renderSongs();
+  const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === nextFolder);
+  if (firstIndex >= 0) playSong(firstIndex);
+}
 
 document.addEventListener("click", event => {
   const genreButton = event.target.closest("[data-genre]");
@@ -243,6 +257,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeExpande
 $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
+$("prevFolderBtn").addEventListener("click", () => stepFolder(-1));
+$("nextFolderBtn").addEventListener("click", () => stepFolder(1));
 $("progress").addEventListener("input", e => {
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
 });
