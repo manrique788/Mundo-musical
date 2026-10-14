@@ -128,3 +128,47 @@
 @media(prefers-reduced-motion:reduce){
   .track-meta strong .marquee-track,#expandedTitle .marquee-track{animation:none}
 }
+
+/* Rolagem do título: viewport fixo + faixa medida em pixels, somente no player */
+.player-title-window{
+  display:block;
+  width:100%;
+  max-width:100%;
+  overflow:hidden;
+  white-space:nowrap;
+}
+.player-title-track{
+  display:inline-flex;
+  width:max-content;
+  max-width:none;
+  transform:translateX(0);
+}
+.player-title-track>span{
+  display:block;
+  flex:0 0 auto;
+  width:max-content;
+  max-width:none;
+  white-space:nowrap;
+  overflow:visible;
+  text-overflow:clip;
+  padding-right:48px;
+}
+.player-title-track.is-overflowing{
+  animation:player-title-scroll var(--title-duration,24s) linear infinite alternate;
+  will-change:transform;
+}
+@keyframes player-title-scroll{
+  from{transform:translateX(0)}
+  to{transform:translateX(calc(-1 * var(--title-distance,200px)))}
+}
+.track-meta strong .player-title-window,
+#expandedTitle .player-title-window{display:block;width:100%;overflow:hidden;}
+.track-meta strong .player-title-track,
+#expandedTitle .player-title-track{display:inline-flex;width:max-content;max-width:none;animation:none;}
+.track-meta strong .player-title-track.is-overflowing,
+#expandedTitle .player-title-track.is-overflowing{animation:player-title-scroll var(--title-duration,24s) linear infinite alternate;}
+.track-meta strong .player-title-track>span,
+#expandedTitle .player-title-track>span{max-width:none;overflow:visible;text-overflow:clip;padding-right:48px;}
+@media(prefers-reduced-motion:reduce){
+ .player-title-track.is-overflowing{animation:none}
+}
