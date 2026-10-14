@@ -338,3 +338,37 @@
     max-width:none;
   }
 }
+
+
+/* No mini player do celular, manter o título parado e cortado antes dos controles */
+@media(max-width:650px){
+  .player .now-playing .player-title-window{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow:hidden!important;
+  }
+  .player .now-playing .player-title-track{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    animation:none!important;
+    transform:none!important;
+  }
+  .player .now-playing .player-title-track>span{
+    display:block!important;
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    padding-right:0!important;
+  }
+  .player .now-playing .player-title-track>span[aria-hidden="true"]{
+    display:none!important;
+  }
+}
