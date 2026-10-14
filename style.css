@@ -632,3 +632,14 @@
   .player .player-controls .play-main{width:41px!important;height:41px!important}
   .player .progress-row{left:15px!important;right:15px!important;bottom:6px!important}
 }
+
+
+/* Botão play/pause transparente: mostrar somente o símbolo */
+.player .player-controls .play-main{
+  background:transparent!important;
+  background-image:none!important;
+  color:#f4f7fb!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.player .player-controls .play-main:hover{color:#28d7ff!important;}
