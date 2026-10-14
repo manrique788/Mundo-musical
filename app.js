@@ -213,11 +213,20 @@ function playSong(index) {
   renderGenreCards();
   audio.src = song.audioUrl;
   const playback = audio.play();
-  if (playback && typeof playback.catch === "function") playback.catch(() => {
-    $("playBtn").textContent = "▶";
-    $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio.";
-    syncExpandedPlayer();
-  });
+  if (playback && typeof playback.then === "function") {
+    playback.then(() => {
+      $("playBtn").textContent = "Ⅱ";
+      if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ";
+      renderGenreCards();
+      renderSongs();
+    }).catch(() => {
+      $("playBtn").textContent = "▶";
+      $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio."; 
+      syncExpandedPlayer();
+      renderGenreCards();
+      renderSongs();
+    });
+  }
 }
 function togglePlay() {
   if (currentIndex < 0) {
@@ -295,8 +304,17 @@ $("progress").addEventListener("input", e => {
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
 });
 audio.addEventListener("ended", () => stepSong(1));
-audio.addEventListener("play", () => { $("playBtn").textContent = "Ⅱ"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ"; renderGenreCards(); renderSongs(); });
-audio.addEventListener("pause", () => { $("playBtn").textContent = "▶"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "▶"; renderGenreCards(); renderSongs(); });
+function syncPlaybackIcons() {
+  const playing = !audio.paused && !audio.ended;
+  $("playBtn").textContent = playing ? "Ⅱ" : "▶";
+  if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = playing ? "Ⅱ" : "▶";
+  renderGenreCards();
+  renderSongs();
+}
+audio.addEventListener("play", syncPlaybackIcons);
+audio.addEventListener("playing", syncPlaybackIcons);
+audio.addEventListener("pause", syncPlaybackIcons);
+audio.addEventListener("ended", syncPlaybackIcons);
 renderGenres();
 renderGenreCards();
 loadSongs();
