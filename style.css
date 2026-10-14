@@ -96,3 +96,8 @@
 }
 .expanded-title{font-size:clamp(22px,5vw,26px)}
 .expanded-artist{font-size:15px}
+
+/* Correção definitiva: o título do player aparece uma única vez, sem cópia para animação. */
+.track-meta strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.track-meta strong .marquee-track,#expandedTitle .marquee-track{display:block;width:100%;max-width:100%;animation:none;transform:none;}
+.marquee-track>span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:0;}
