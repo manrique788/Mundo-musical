@@ -100,7 +100,7 @@ function renderGenreCards() {
       <span class="genre-card-art" aria-hidden="true">${symbols[i % symbols.length]}</span>
       <span class="genre-card-name">${escapeHtml(g)}</span>
       <span class="genre-card-count">${count} ${count === 1 ? "música" : "músicas"}</span>
-      <span class="genre-card-play" aria-hidden="true">▶</span>
+      <span class="genre-card-play" aria-hidden="true">${currentIndex >= 0 && songs[currentIndex] && (songs[currentIndex].genre || "Sem pasta") === g && !audio.paused ? "Ⅱ" : "▶"}</span>
     </button>`;
   }).join("");
   target.querySelectorAll(".genre-card").forEach(card => {
@@ -111,7 +111,14 @@ function renderGenreCards() {
       if (!folderName) return;
       selectedGenre = folderName;
       $("searchInput").value = "";
-      renderGenres(); renderGenreCards(); renderSongs();
+      renderGenres(); renderSongs();
+      const currentFolder = currentIndex >= 0 && songs[currentIndex] ? (songs[currentIndex].genre || "Sem pasta") : "";
+      if (currentFolder === folderName) {
+        if (audio.paused) audio.play().catch(() => {});
+        else audio.pause();
+        renderGenreCards();
+        return;
+      }
       const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
       if (firstIndex >= 0) playSong(firstIndex);
       else console.error("Nenhuma música encontrada para a pasta:", folderName);
@@ -203,6 +210,7 @@ function playSong(index) {
   $("playBtn").textContent = "Ⅱ";
   syncExpandedPlayer();
   renderSongs();
+  renderGenreCards();
   audio.src = song.audioUrl;
   const playback = audio.play();
   if (playback && typeof playback.catch === "function") playback.catch(() => {
@@ -287,8 +295,8 @@ $("progress").addEventListener("input", e => {
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
 });
 audio.addEventListener("ended", () => stepSong(1));
-audio.addEventListener("play", () => { $("playBtn").textContent = "Ⅱ"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ"; });
-audio.addEventListener("pause", () => { $("playBtn").textContent = "▶"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "▶"; });
+audio.addEventListener("play", () => { $("playBtn").textContent = "Ⅱ"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ"; renderGenreCards(); renderSongs(); });
+audio.addEventListener("pause", () => { $("playBtn").textContent = "▶"; if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "▶"; renderGenreCards(); renderSongs(); });
 renderGenres();
 renderGenreCards();
 loadSongs();
