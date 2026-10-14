@@ -62,9 +62,9 @@
 
 /* Títulos deslizantes no estilo de players musicais */
 .track-meta strong,#expandedTitle{display:block;overflow:hidden;white-space:nowrap;text-overflow:clip;}
-.marquee-track{display:flex;width:max-content;max-width:none;animation:music-title-scroll 12s linear infinite;will-change:transform;}
+.marquee-track{display:flex;width:max-content;max-width:none;animation:music-title-scroll 30s linear infinite;will-change:transform;}
 .marquee-track>span{display:block;flex:0 0 auto;padding-right:3rem;white-space:nowrap;}
-.track-meta strong .marquee-track{animation-duration:10s;}
-#expandedTitle .marquee-track{margin:0 auto;animation-duration:13s;}
-@keyframes music-title-scroll{0%,12%{transform:translateX(0)}88%,100%{transform:translateX(-50%)}}
+.track-meta strong .marquee-track{animation-duration:28s;}
+#expandedTitle .marquee-track{margin:0 auto;animation-duration:34s;}
+@keyframes music-title-scroll{0%,18%{transform:translateX(0)}82%,100%{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.marquee-track{animation:none;transform:none}}
