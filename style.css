@@ -481,3 +481,54 @@
   }
   .player .player-right{display:none!important}
 }
+
+
+/* A bolinha da linha de progresso só aparece quando a pessoa toca/arrasta a barra */
+@media(max-width:650px){
+  .player .progress-row input[type="range"]{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    background:transparent!important;
+    cursor:pointer;
+    touch-action:pan-y;
+  }
+  .player .progress-row input[type="range"]::-webkit-slider-runnable-track{
+    height:2px!important;
+    background:#777b84!important;
+    border:0!important;
+    border-radius:99px!important;
+  }
+  .player .progress-row input[type="range"]::-moz-range-track{
+    height:2px!important;
+    background:#777b84!important;
+    border:0!important;
+    border-radius:99px!important;
+  }
+  .player .progress-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    width:13px!important;
+    height:13px!important;
+    margin-top:-5.5px!important;
+    border:0!important;
+    border-radius:50%!important;
+    background:#28d7ff!important;
+    opacity:0!important;
+    box-shadow:none!important;
+  }
+  .player .progress-row input[type="range"]::-moz-range-thumb{
+    width:13px!important;
+    height:13px!important;
+    border:0!important;
+    border-radius:50%!important;
+    background:#28d7ff!important;
+    opacity:0!important;
+    box-shadow:none!important;
+  }
+  .player .progress-row input[type="range"].seek-touched::-webkit-slider-thumb{
+    opacity:1!important;
+  }
+  .player .progress-row input[type="range"].seek-touched::-moz-range-thumb{
+    opacity:1!important;
+  }
+}
