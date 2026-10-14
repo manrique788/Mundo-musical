@@ -589,3 +589,28 @@
     width:0!important;height:0!important;opacity:0!important;background:transparent!important;border:0!important;
   }
 }
+
+
+/* Linha de progresso estilo Spotify: trecho tocado branco e restante cinza */
+@media(max-width:650px){
+  .player .progress-row input[type="range"]{
+    background:linear-gradient(to right,#fff 0%,#fff var(--progress-percent,0%),#737780 var(--progress-percent,0%),#737780 100%)!important;
+    border-radius:99px!important;
+  }
+  .player .progress-row input[type="range"]::-webkit-slider-runnable-track{
+    height:2px!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:99px!important;
+  }
+  .player .progress-row input[type="range"]::-moz-range-track{
+    height:2px!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:99px!important;
+  }
+  .player .progress-row input[type="range"]::-moz-range-progress{
+    height:2px!important;
+    background:transparent!important;
+  }
+}
