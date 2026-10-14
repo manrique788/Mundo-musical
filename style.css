@@ -614,3 +614,21 @@
     background:transparent!important;
   }
 }
+
+
+/* Mini player inferior um pouco maior no celular, mantendo a linha horizontal */
+@media(max-width:650px){
+  body{padding-bottom:98px!important}
+  .player{
+    min-height:86px!important;
+    padding:11px 15px 17px!important;
+  }
+  .player .cover-small{width:47px!important;height:47px!important;flex-basis:47px!important}
+  .player .now-playing{gap:12px!important;padding-right:146px!important}
+  .player .track-meta strong{font-size:13px!important}
+  .player .track-meta span{font-size:11px!important}
+  .player .player-controls{right:15px!important;gap:13px!important}
+  .player .player-controls button{font-size:18px!important}
+  .player .player-controls .play-main{width:41px!important;height:41px!important}
+  .player .progress-row{left:15px!important;right:15px!important;bottom:6px!important}
+}
