@@ -227,28 +227,40 @@ function closeExpandedPlayer() {
   $("playerOverlay").classList.remove("open");
   $("playerOverlay").setAttribute("aria-hidden","true");
 }
+let playbackRequestId = 0;
 function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
+
+  // Começa a buscar e reproduzir o novo áudio antes de redesenhar listas pesadas.
+  const requestId = ++playbackRequestId;
   currentIndex = index;
+  audio.preload = "auto";
+  audio.src = song.audioUrl;
+  audio.load();
+  const playback = audio.play();
+
   setScrollingTitle($("currentTitle"), song.title);
-  $("currentArtist").textContent = (song.artist && !sameTrackText(song.artist, song.title)) ? song.artist : "";
+  $("currentArtist").textContent = (song.artist && !sameTrackText(song.artist, song.title)) ? song.artist : "Carregando música…";
   $("currentCover").textContent = "♫";
   $("playBtn").textContent = "Ⅱ";
   syncExpandedPlayer();
   renderSongs();
   renderGenreCards();
-  audio.src = song.audioUrl;
-  const playback = audio.play();
+
   if (playback && typeof playback.then === "function") {
     playback.then(() => {
+      if (requestId !== playbackRequestId) return;
       $("playBtn").textContent = "Ⅱ";
+      $("currentArtist").textContent = (song.artist && !sameTrackText(song.artist, song.title)) ? song.artist : "";
       if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ";
+      syncExpandedPlayer();
       renderGenreCards();
       renderSongs();
     }).catch(() => {
+      if (requestId !== playbackRequestId) return;
       $("playBtn").textContent = "▶";
-      $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio."; 
+      $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio.";
       syncExpandedPlayer();
       renderGenreCards();
       renderSongs();
