@@ -245,8 +245,7 @@ function playSong(index) {
   $("currentCover").textContent = "♫";
   $("playBtn").textContent = "Ⅱ";
   syncExpandedPlayer();
-  renderSongs();
-  renderGenreCards();
+  updatePlaybackRows();
 
   if (playback && typeof playback.then === "function") {
     playback.then(() => {
@@ -255,17 +254,30 @@ function playSong(index) {
       $("currentArtist").textContent = (song.artist && !sameTrackText(song.artist, song.title)) ? song.artist : "";
       if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ";
       syncExpandedPlayer();
-      renderGenreCards();
-      renderSongs();
+      updatePlaybackRows();
     }).catch(() => {
       if (requestId !== playbackRequestId) return;
       $("playBtn").textContent = "▶";
       $("currentArtist").textContent = "Não foi possível reproduzir. Verifique a URL pública do áudio.";
       syncExpandedPlayer();
-      renderGenreCards();
-      renderSongs();
+      updatePlaybackRows();
     });
   }
+}
+function updatePlaybackRows() {
+  document.querySelectorAll(".song-row").forEach(row => {
+    const index = Number(row.dataset.index);
+    const active = index === currentIndex && !audio.paused && !audio.ended;
+    row.classList.toggle("playing", active);
+    const button = row.querySelector("[data-play]");
+    if (button) button.textContent = active ? "Ⅱ" : "▶";
+  });
+  document.querySelectorAll(".genre-card").forEach(card => {
+    const genre = card.dataset.genre;
+    const icon = card.querySelector(".genre-card-play");
+    const active = currentIndex >= 0 && songs[currentIndex] && songs[currentIndex].genre === genre && !audio.paused;
+    if (icon) icon.textContent = active ? "Ⅱ" : "▶";
+  });
 }
 function togglePlay() {
   if (currentIndex < 0) {
@@ -367,8 +379,7 @@ function syncPlaybackIcons() {
   const playing = !audio.paused && !audio.ended;
   $("playBtn").textContent = playing ? "Ⅱ" : "▶";
   if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = playing ? "Ⅱ" : "▶";
-  renderGenreCards();
-  renderSongs();
+  updatePlaybackRows();
 }
 audio.addEventListener("play", syncPlaybackIcons);
 audio.addEventListener("playing", syncPlaybackIcons);
