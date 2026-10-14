@@ -96,7 +96,7 @@ function renderGenreCards() {
   }
   target.innerHTML = list.map((g, i) => {
     const count = counts.get(g) || 0;
-    return `<button class="genre-card ${g===selectedGenre?"active":""}" data-genre="${escapeHtml(g)}" style="--genre-bg:${palettes[i % palettes.length]}">
+    return `<button class="genre-card ${g===selectedGenre?"active":""}" data-genre="${escapeHtml(g)}" data-folder-play="${escapeHtml(g)}" style="--genre-bg:${palettes[i % palettes.length]}">
       <span class="genre-card-art" aria-hidden="true">${symbols[i % symbols.length]}</span>
       <span class="genre-card-name">${escapeHtml(g)}</span>
       <span class="genre-card-count">${count} ${count === 1 ? "música" : "músicas"}</span>
@@ -227,6 +227,16 @@ function stepFolder(delta) {
 }
 
 document.addEventListener("click", event => {
+  const folderPlayButton = event.target.closest("[data-folder-play]");
+  if (folderPlayButton) {
+    const folderName = folderPlayButton.dataset.folderPlay;
+    selectedGenre = folderName;
+    $("searchInput").value = "";
+    renderGenres(); renderGenreCards(); renderSongs();
+    const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
+    if (firstIndex >= 0) playSong(firstIndex);
+    return;
+  }
   const genreButton = event.target.closest("[data-genre]");
   if (genreButton) {
     selectedGenre = genreButton.dataset.genre;
