@@ -180,6 +180,11 @@ function renderSongs() {
   `).join("");
 }
 
+function sameTrackText(a, b) {
+  const normalize = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, "").trim();
+  const first = normalize(a), second = normalize(b);
+  return !!first && !!second && (first === second || first.includes(second) || second.includes(first));
+}
 function setScrollingTitle(element, title) {
   if (!element) return;
   const safeTitle = escapeHtml(title || "Escolha uma música");
@@ -187,7 +192,7 @@ function setScrollingTitle(element, title) {
 }
 function syncExpandedPlayer() {
   setScrollingTitle($("expandedTitle"), currentIndex >= 0 && songs[currentIndex] ? songs[currentIndex].title : "Escolha uma música");
-  $("expandedArtist").textContent = currentIndex >= 0 && songs[currentIndex] ? ((songs[currentIndex].artist && songs[currentIndex].artist.trim().toLocaleLowerCase("pt-BR") !== songs[currentIndex].title.trim().toLocaleLowerCase("pt-BR")) ? songs[currentIndex].artist : "") : "Sua próxima favorita começa aqui";
+  $("expandedArtist").textContent = currentIndex >= 0 && songs[currentIndex] ? ((songs[currentIndex].artist && !sameTrackText(songs[currentIndex].artist, songs[currentIndex].title)) ? songs[currentIndex].artist : "") : "Sua próxima favorita começa aqui";
   $("expandedPlayBtn").textContent = audio.paused ? "▶" : "Ⅱ";
   $("expandedCover").textContent = "♫";
 }
@@ -205,7 +210,7 @@ function playSong(index) {
   if (!song || !song.audioUrl) return;
   currentIndex = index;
   setScrollingTitle($("currentTitle"), song.title);
-  $("currentArtist").textContent = (song.artist && song.artist.trim().toLocaleLowerCase("pt-BR") !== song.title.trim().toLocaleLowerCase("pt-BR")) ? song.artist : "";
+  $("currentArtist").textContent = (song.artist && !sameTrackText(song.artist, song.title)) ? song.artist : "";
   $("currentCover").textContent = "♫";
   $("playBtn").textContent = "Ⅱ";
   syncExpandedPlayer();
