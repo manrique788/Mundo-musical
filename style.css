@@ -575,3 +575,17 @@
     background:#28d7ff!important;
   }
 }
+
+
+/* A bolinha fica visível durante o ajuste e some logo após soltar */
+@media(max-width:650px){
+  .player .progress-row input[type="range"].seek-touched{
+    accent-color:#28d7ff!important;
+  }
+  .player .progress-row input[type="range"]:not(.seek-touched)::-webkit-slider-thumb{
+    width:0!important;height:0!important;opacity:0!important;background:transparent!important;border:0!important;
+  }
+  .player .progress-row input[type="range"]:not(.seek-touched)::-moz-range-thumb{
+    width:0!important;height:0!important;opacity:0!important;background:transparent!important;border:0!important;
+  }
+}
