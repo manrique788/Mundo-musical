@@ -312,6 +312,7 @@ audio.addEventListener("timeupdate", () => {
   $("currentTime").textContent = formatTime(audio.currentTime);
   $("duration").textContent = formatTime(audio.duration);
   $("progress").value = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+  $("progress").style.setProperty("--progress-percent", $("progress").value + "%");
   $("expandedCurrentTime").textContent = formatTime(audio.currentTime);
   $("expandedDuration").textContent = formatTime(audio.duration);
   $("expandedProgress").value = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
@@ -346,6 +347,7 @@ progressBar.addEventListener("blur", () => progressBar.classList.remove("seek-to
 progressBar.addEventListener("keydown", showProgressThumb);
 progressBar.addEventListener("keyup", hideProgressThumbSoon);
 $("progress").addEventListener("input", e => {
+  e.currentTarget.style.setProperty("--progress-percent", e.currentTarget.value + "%");
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
 });
 audio.addEventListener("ended", () => stepSong(1));
