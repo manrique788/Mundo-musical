@@ -68,3 +68,31 @@
 #expandedTitle .marquee-track{margin:0 auto;animation-duration:34s;}
 @keyframes music-title-scroll{0%,18%{transform:translateX(0)}82%,100%{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.marquee-track{animation:none;transform:none}}
+
+
+/* Ajuste de leitura: tipografia e controles um pouco maiores, inspirados na hierarquia do Spotify */
+@media(min-width:651px){
+  .section-head h2{font-size:23px}
+  .chip{font-size:12px;padding:10px 15px}
+  .song-info strong{font-size:14px}
+  .song-info span{font-size:12px}
+  .genre-card-name{font-size:17px}
+  .genre-card-count{font-size:12px}
+}
+@media(max-width:650px){
+  .section-head h2{font-size:21px}
+  .section-kicker{font-size:10px}
+  .chip{font-size:12px;padding:9px 12px}
+  .genre-card-name{font-size:15px}
+  .genre-card-count{font-size:12px}
+  .song-info strong{font-size:13px}
+  .song-info span{font-size:12px}
+  .track-meta strong{font-size:15px}
+  .track-meta span{font-size:13px}
+  .player-controls button{font-size:18px}
+  .player-controls .play-main{width:36px;height:36px}
+  .cover-small{width:44px;height:44px}
+  .progress-row{font-size:12px}
+}
+.expanded-title{font-size:clamp(22px,5vw,26px)}
+.expanded-artist{font-size:15px}
