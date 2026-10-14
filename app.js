@@ -159,8 +159,13 @@ function renderSongs() {
   `).join("");
 }
 
+function setScrollingTitle(element, title) {
+  if (!element) return;
+  const safeTitle = escapeHtml(title || "Escolha uma música");
+  element.innerHTML = '<span class="marquee-track"><span>' + safeTitle + '</span><span aria-hidden="true">' + safeTitle + '</span></span>';
+}
 function syncExpandedPlayer() {
-  $("expandedTitle").textContent = currentIndex >= 0 && songs[currentIndex] ? songs[currentIndex].title : "Escolha uma música";
+  setScrollingTitle($("expandedTitle"), currentIndex >= 0 && songs[currentIndex] ? songs[currentIndex].title : "Escolha uma música");
   $("expandedArtist").textContent = currentIndex >= 0 && songs[currentIndex] ? (songs[currentIndex].artist || "Artista desconhecido") : "Sua próxima favorita começa aqui";
   $("expandedPlayBtn").textContent = audio.paused ? "▶" : "Ⅱ";
   $("expandedCover").textContent = "♫";
@@ -178,7 +183,7 @@ function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
   currentIndex = index;
-  $("currentTitle").textContent = song.title;
+  setScrollingTitle($("currentTitle"), song.title);
   $("currentArtist").textContent = song.artist || "Artista desconhecido";
   $("currentCover").textContent = "♫";
   $("playBtn").textContent = "Ⅱ";
