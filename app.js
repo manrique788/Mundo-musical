@@ -187,8 +187,30 @@ function sameTrackText(a, b) {
 }
 function setScrollingTitle(element, title) {
   if (!element) return;
-  const safeTitle = escapeHtml(title || "Escolha uma música");
-  element.innerHTML = '<span class="marquee-track"><span>' + safeTitle + '</span><span aria-hidden="true">' + safeTitle + '</span></span>';
+  const text = title || "Escolha uma música";
+  const safeTitle = escapeHtml(text);
+  element.innerHTML = '<span class="player-title-window"><span class="player-title-track"><span>' + safeTitle + '</span><span aria-hidden="true">' + safeTitle + '</span></span></span>';
+  const windowEl = element.querySelector(".player-title-window");
+  const track = element.querySelector(".player-title-track");
+  const firstCopy = track && track.firstElementChild;
+  if (!windowEl || !track || !firstCopy) return;
+  const measureAndSet = () => {
+    const available = windowEl.clientWidth;
+    const textWidth = firstCopy.scrollWidth;
+    if (textWidth > available + 2) {
+      const distance = textWidth + 48;
+      const duration = Math.max(14, Math.min(32, distance / 18));
+      track.style.setProperty("--title-distance", distance + "px");
+      track.style.setProperty("--title-duration", duration + "s");
+      track.classList.add("is-overflowing");
+    } else {
+      track.classList.remove("is-overflowing");
+      track.style.removeProperty("--title-distance");
+      track.style.removeProperty("--title-duration");
+    }
+  };
+  measureAndSet();
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(measureAndSet);
 }
 function syncExpandedPlayer() {
   setScrollingTitle($("expandedTitle"), currentIndex >= 0 && songs[currentIndex] ? songs[currentIndex].title : "Escolha uma música");
