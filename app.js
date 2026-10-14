@@ -227,12 +227,17 @@ function stepFolder(delta) {
 }
 
 document.addEventListener("click", event => {
-  const folderPlayButton = event.target.closest("[data-folder-play]");
-  if (folderPlayButton) {
-    const folderName = folderPlayButton.dataset.folderPlay;
+  // Qualquer toque no cartão da pasta, inclusive no ícone de play, inicia a primeira faixa.
+  const folderCard = event.target.closest(".genre-card");
+  if (folderCard) {
+    event.preventDefault();
+    const folderName = folderCard.dataset.folderPlay || folderCard.dataset.genre;
+    if (!folderName) return;
     selectedGenre = folderName;
     $("searchInput").value = "";
-    renderGenres(); renderGenreCards(); renderSongs();
+    renderGenres();
+    renderGenreCards();
+    renderSongs();
     const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
     if (firstIndex >= 0) playSong(firstIndex);
     return;
