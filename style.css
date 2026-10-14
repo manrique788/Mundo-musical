@@ -101,3 +101,30 @@
 .track-meta strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .track-meta strong .marquee-track,#expandedTitle .marquee-track{display:block;width:100%;max-width:100%;animation:none;transform:none;}
 .marquee-track>span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:0;}
+
+/* Rolagem suave somente nos títulos dos players de reprodução */
+.track-meta strong .marquee-track,
+#expandedTitle .marquee-track{
+  display:flex;
+  width:max-content;
+  max-width:none;
+  animation: player-title-marquee 32s ease-in-out infinite alternate;
+  will-change:transform;
+}
+.track-meta strong .marquee-track>span,
+#expandedTitle .marquee-track>span{
+  display:block;
+  flex:0 0 auto;
+  max-width:none;
+  overflow:visible;
+  text-overflow:clip;
+  white-space:nowrap;
+  padding-right:3rem;
+}
+@keyframes player-title-marquee{
+  0%,12%{transform:translateX(0)}
+  88%,100%{transform:translateX(calc(-50%))}
+}
+@media(prefers-reduced-motion:reduce){
+  .track-meta strong .marquee-track,#expandedTitle .marquee-track{animation:none}
+}
