@@ -327,6 +327,9 @@ $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("prevFolderBtn").addEventListener("click", () => stepFolder(-1));
 $("nextFolderBtn").addEventListener("click", () => stepFolder(1));
+$("progress").addEventListener("pointerdown", e => { e.currentTarget.classList.add("seek-touched"); });
+$("progress").addEventListener("touchstart", e => { e.currentTarget.classList.add("seek-touched"); }, { passive: true });
+$("progress").addEventListener("focus", e => { e.currentTarget.classList.add("seek-touched"); });
 $("progress").addEventListener("input", e => {
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
 });
