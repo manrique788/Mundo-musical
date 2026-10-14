@@ -103,6 +103,20 @@ function renderGenreCards() {
       <span class="genre-card-play" aria-hidden="true">▶</span>
     </button>`;
   }).join("");
+  target.querySelectorAll(".genre-card").forEach(card => {
+    card.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const folderName = card.dataset.folderPlay || card.dataset.genre;
+      if (!folderName) return;
+      selectedGenre = folderName;
+      $("searchInput").value = "";
+      renderGenres(); renderGenreCards(); renderSongs();
+      const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
+      if (firstIndex >= 0) playSong(firstIndex);
+      else console.error("Nenhuma música encontrada para a pasta:", folderName);
+    });
+  });
 }
 function renderSongs() {
   const query = $("searchInput").value.trim().toLocaleLowerCase("pt-BR");
@@ -227,21 +241,6 @@ function stepFolder(delta) {
 }
 
 document.addEventListener("click", event => {
-  // Qualquer toque no cartão da pasta, inclusive no ícone de play, inicia a primeira faixa.
-  const folderCard = event.target.closest(".genre-card");
-  if (folderCard) {
-    event.preventDefault();
-    const folderName = folderCard.dataset.folderPlay || folderCard.dataset.genre;
-    if (!folderName) return;
-    selectedGenre = folderName;
-    $("searchInput").value = "";
-    renderGenres();
-    renderGenreCards();
-    renderSongs();
-    const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
-    if (firstIndex >= 0) playSong(firstIndex);
-    return;
-  }
   const genreButton = event.target.closest("[data-genre]");
   if (genreButton) {
     selectedGenre = genreButton.dataset.genre;
