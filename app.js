@@ -188,7 +188,7 @@ function sameTrackText(a, b) {
 function setScrollingTitle(element, title) {
   if (!element) return;
   const safeTitle = escapeHtml(title || "Escolha uma música");
-  element.innerHTML = '<span class="marquee-track"><span>' + safeTitle + '</span><span aria-hidden="true">' + safeTitle + '</span></span>';
+  element.textContent = title || "Escolha uma música";
 }
 function syncExpandedPlayer() {
   setScrollingTitle($("expandedTitle"), currentIndex >= 0 && songs[currentIndex] ? songs[currentIndex].title : "Escolha uma música");
