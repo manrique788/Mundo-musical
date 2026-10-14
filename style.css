@@ -532,3 +532,46 @@
     opacity:1!important;
   }
 }
+
+
+/* Correção reforçada para navegadores Android: esconder totalmente o thumb até interação */
+@media(max-width:650px){
+  .player .progress-row input[type="range"]{
+    accent-color:transparent!important;
+  }
+  .player .progress-row input[type="range"]::-webkit-slider-thumb{
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    opacity:0!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    -webkit-appearance:none!important;
+    appearance:none!important;
+  }
+  .player .progress-row input[type="range"]::-moz-range-thumb{
+    width:0!important;
+    height:0!important;
+    opacity:0!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .player .progress-row input[type="range"].seek-touched{
+    accent-color:#28d7ff!important;
+  }
+  .player .progress-row input[type="range"].seek-touched::-webkit-slider-thumb{
+    width:13px!important;
+    height:13px!important;
+    margin-top:-5.5px!important;
+    opacity:1!important;
+    background:#28d7ff!important;
+  }
+  .player .progress-row input[type="range"].seek-touched::-moz-range-thumb{
+    width:13px!important;
+    height:13px!important;
+    opacity:1!important;
+    background:#28d7ff!important;
+  }
+}
