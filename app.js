@@ -285,8 +285,12 @@ function togglePlay() {
     if (first) playSong(songs.indexOf(first));
     return;
   }
-  if (audio.paused) audio.play().then(() => {$("playBtn").textContent="Ⅱ";renderSongs();}).catch(()=>{});
-  else { audio.pause(); $("playBtn").textContent="▶"; renderSongs(); }
+  if (audio.paused) {
+    audio.play().catch(error => console.error("Falha ao retomar áudio:", error));
+  } else {
+    audio.pause();
+  }
+  syncPlaybackIcons();
 }
 function stepSong(delta) {
   if (!songs.length) return;
