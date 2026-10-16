@@ -50,12 +50,14 @@ async function loadSongs() {
     } while (cursor);
 
     songs = allSongs
-      .map(s => ({
+      .map((s, index) => ({
         ...s,
+        _index: index,
         genre: classifySong(s),
         audioUrl: String(s.audioUrl || "").replace(/\s+\//g, "/")
       }))
-      .filter(s => s && s.title && s.audioUrl);
+      .filter(s => s && s.title && s.audioUrl)
+      .map((s, index) => ({ ...s, _index: index }));
 
     if (!songs.length) throw new Error("Catálogo vazio");
     renderGenres();
@@ -148,7 +150,7 @@ function renderSongs() {
     "linear-gradient(135deg,#4da66b,#183a31)"
   ];
   const renderRow = (s, i) => {
-    const originalIndex = songs.indexOf(s);
+    const originalIndex = s._index;
     const isPlaying = currentIndex === originalIndex && !audio.paused;
     const palette = palettes[(originalIndex < 0 ? i : originalIndex) % palettes.length];
     return `<div class="song-row ${isPlaying?"playing":""}" data-index="${originalIndex}">
@@ -164,18 +166,23 @@ function renderSongs() {
     return;
   }
 
-  const grouped = [...genres(), "Outros"].map(g => ({
-    name: g,
-    tracks: visibleSongs.filter(s => (s.genre || "Outros") === g)
-  })).filter(group => group.tracks.length);
+  // Agrupa em uma única passagem e mostra uma prévia por gênero na página inicial.
+  // O botão "Ver todas" abre a lista completa daquele gênero.
+  const groupedMap = new Map();
+  for (const song of visibleSongs) {
+    const name = song.genre || "Outros";
+    if (!groupedMap.has(name)) groupedMap.set(name, []);
+    groupedMap.get(name).push(song);
+  }
+  const grouped = [...groupedMap.entries()].map(([name, tracks]) => ({ name, tracks }));
 
-  $("songList").innerHTML = grouped.map((group, groupIndex) => `
+  $("songList").innerHTML = grouped.map(group => `
     <section class="genre-shelf">
       <div class="genre-shelf-head">
         <div><span class="shelf-kicker">EXPLORE O ESTILO</span><h3>${escapeHtml(group.name)}</h3></div>
         <button class="see-genre" data-genre="${escapeHtml(group.name)}">Ver todas <span>→</span></button>
       </div>
-      <div class="shelf-track-list">${group.tracks.map(renderRow).join("")}</div>
+      <div class="shelf-track-list">${group.tracks.slice(0, 12).map(renderRow).join("")}</div>
     </section>
   `).join("");
 }
