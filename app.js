@@ -236,6 +236,14 @@ function closeExpandedPlayer() {
   $("playerOverlay").setAttribute("aria-hidden","true");
 }
 let playbackRequestId = 0;
+let shuffleEnabled = false;
+function updateShuffleButton() {
+  const button = $("shuffleBtn");
+  if (!button) return;
+  button.classList.toggle("active", shuffleEnabled);
+  button.setAttribute("aria-pressed", String(shuffleEnabled));
+  button.textContent = shuffleEnabled ? "🔀 Aleatório: ligado" : "🔀 Aleatório: desligado";
+}
 function updateMediaSession(song) {
   if (!("mediaSession" in navigator) || !song) return;
   try {
@@ -337,9 +345,18 @@ function togglePlay() {
 }
 function stepSong(delta) {
   if (!songs.length) return;
+  if (shuffleEnabled && delta > 0) {
+    let next = currentIndex;
+    if (songs.length > 1) {
+      while (next === currentIndex) next = Math.floor(Math.random() * songs.length);
+    }
+    playSong(next < 0 ? 0 : next);
+    return;
+  }
   const start = currentIndex < 0 ? 0 : currentIndex;
   playSong((start + delta + songs.length) % songs.length);
 }
+
 function stepFolder(delta) {
   const folders = genres();
   if (!folders.length) return;
@@ -397,6 +414,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeExpande
 $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
+$("shuffleBtn").addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updateShuffleButton(); });
+updateShuffleButton();
 $("prevFolderBtn").addEventListener("click", () => stepFolder(-1));
 $("nextFolderBtn").addEventListener("click", () => stepFolder(1));
 const progressBar = $("progress");
