@@ -263,9 +263,12 @@ function setupMediaSession() {
     previoustrack: () => stepSong(-1)
   };
   for (const [action, handler] of Object.entries(actions)) {
-    try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {}
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch (error) {
+      console.debug("Ação de mídia não suportada:", action);
+    }
   }
 }
+
 function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
@@ -273,6 +276,7 @@ function playSong(index) {
   // Começa a buscar e reproduzir o novo áudio antes de redesenhar listas pesadas.
   const requestId = ++playbackRequestId;
   currentIndex = index;
+  setupMediaSession();
   updateMediaSession(song);
   audio.preload = "auto";
   audio.src = song.audioUrl;
