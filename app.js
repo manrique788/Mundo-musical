@@ -63,6 +63,7 @@ async function loadSongs() {
     renderGenres();
     renderGenreCards();
     renderSongs();
+    setupMediaSession();
     $("trackCount").textContent = `${songs.length} músicas disponíveis`;
   } catch (error) {
     console.error(error);
@@ -235,6 +236,36 @@ function closeExpandedPlayer() {
   $("playerOverlay").setAttribute("aria-hidden","true");
 }
 let playbackRequestId = 0;
+function updateMediaSession(song) {
+  if (!("mediaSession" in navigator) || !song) return;
+  try {
+    if ("MediaMetadata" in window) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: song.title || "Mundo Musical",
+        artist: song.artist || "Artista desconhecido",
+        album: "Mundo Musical"
+      });
+    }
+    navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing";
+  } catch (error) {
+    console.warn("Não foi possível atualizar os controles de mídia:", error);
+  }
+}
+function setupMediaSession() {
+  if (!("mediaSession" in navigator)) return;
+  const actions = {
+    play: () => {
+      if (currentIndex >= 0) audio.play().catch(() => {});
+      else if (songs.length) playSong(0);
+    },
+    pause: () => audio.pause(),
+    nexttrack: () => stepSong(1),
+    previoustrack: () => stepSong(-1)
+  };
+  for (const [action, handler] of Object.entries(actions)) {
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {}
+  }
+}
 function playSong(index) {
   const song = songs[index];
   if (!song || !song.audioUrl) return;
@@ -242,6 +273,7 @@ function playSong(index) {
   // Começa a buscar e reproduzir o novo áudio antes de redesenhar listas pesadas.
   const requestId = ++playbackRequestId;
   currentIndex = index;
+  updateMediaSession(song);
   audio.preload = "auto";
   audio.src = song.audioUrl;
   audio.load();
@@ -392,9 +424,9 @@ function syncPlaybackIcons() {
   if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = playing ? "Ⅱ" : "▶";
   updatePlaybackRows();
 }
-audio.addEventListener("play", syncPlaybackIcons);
-audio.addEventListener("playing", syncPlaybackIcons);
-audio.addEventListener("pause", syncPlaybackIcons);
+audio.addEventListener("play", () => { syncPlaybackIcons(); if (currentIndex >= 0) updateMediaSession(songs[currentIndex]); });
+audio.addEventListener("playing", () => { syncPlaybackIcons(); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; });
+audio.addEventListener("pause", () => { syncPlaybackIcons(); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; });
 audio.addEventListener("ended", syncPlaybackIcons);
 renderGenres();
 renderGenreCards();
