@@ -643,3 +643,33 @@
   box-shadow:none!important;
 }
 .player .player-controls .play-main:hover{color:#28d7ff!important;}
+
+
+/* Botão do modo aleatório no reprodutor expandido */
+.shuffle-control {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0 0 14px;
+}
+.shuffle-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid rgba(75, 220, 246, .55);
+  border-radius: 999px;
+  background: rgba(18, 28, 35, .96);
+  color: #f4fbff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shuffle-control button.active {
+  background: #20c8e8;
+  color: #061116;
+  border-color: #20c8e8;
+}
