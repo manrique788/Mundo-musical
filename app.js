@@ -287,8 +287,9 @@ function playSong(index) {
   setupMediaSession();
   updateMediaSession(song);
   audio.preload = "auto";
+  // Definir src já inicia o carregamento; evitar load() explícito reduz interrupções
+  // e evita reiniciar a solicitação de áudio durante trocas rápidas.
   audio.src = song.audioUrl;
-  audio.load();
   const playback = audio.play();
 
   setScrollingTitle($("currentTitle"), song.title);
