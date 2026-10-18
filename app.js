@@ -129,6 +129,7 @@ function renderGenreCards() {
   });
 }
 function renderSongs() {
+  visibleTrackLimit = INITIAL_TRACK_LIMIT;
   const query = $("searchInput").value.trim().toLocaleLowerCase("pt-BR");
   visibleSongs = songs.filter(s => {
     const matchesGenre = selectedGenre === "Todos" || (s.genre || "Outros") === selectedGenre;
@@ -163,7 +164,7 @@ function renderSongs() {
   };
 
   if (selectedGenre !== "Todos" || query) {
-    $("songList").innerHTML = visibleSongs.map(renderRow).join("");
+    renderVisibleTrackPage(renderRow);
     return;
   }
 
@@ -188,6 +189,12 @@ function renderSongs() {
   `).join("");
 }
 
+function renderVisibleTrackPage(renderRow) {
+  const shown = visibleSongs.slice(0, visibleTrackLimit);
+  const remaining = visibleSongs.length - shown.length;
+  $("songList").innerHTML = shown.map(renderRow).join("") +
+    (remaining > 0 ? `<div class="load-more-wrap"><button type="button" id="loadMoreSongs" class="see-genre">Carregar mais músicas (${remaining})</button></div>` : "");
+}
 function sameTrackText(a, b) {
   const normalize = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, "").trim();
   const first = normalize(a), second = normalize(b);
@@ -237,6 +244,8 @@ function closeExpandedPlayer() {
 }
 let playbackRequestId = 0;
 let shuffleEnabled = false;
+const INITIAL_TRACK_LIMIT = 100;
+let visibleTrackLimit = INITIAL_TRACK_LIMIT;
 function updateShuffleButton() {
   const button = $("shuffleBtn");
   if (!button) return;
@@ -286,9 +295,10 @@ function playSong(index) {
   currentIndex = index;
   setupMediaSession();
   updateMediaSession(song);
+  // Encerra a faixa anterior antes de trocar a origem, evitando disputas entre
+  // solicitações quando o usuário toca várias vezes em "próxima".
+  audio.pause();
   audio.preload = "auto";
-  // Definir src já inicia o carregamento; evitar load() explícito reduz interrupções
-  // e evita reiniciar a solicitação de áudio durante trocas rápidas.
   audio.src = song.audioUrl;
   const playback = audio.play();
 
@@ -374,6 +384,20 @@ function stepFolder(delta) {
 }
 
 document.addEventListener("click", event => {
+  const loadMoreButton = event.target.closest("#loadMoreSongs");
+  if (loadMoreButton) {
+    visibleTrackLimit += INITIAL_TRACK_LIMIT;
+    const query = $("searchInput").value.trim().toLocaleLowerCase("pt-BR");
+    const renderRow = (s, i) => {
+      const originalIndex = s._index;
+      const isPlaying = currentIndex === originalIndex && !audio.paused;
+      const palettes = ["linear-gradient(135deg,#7148d8,#21143d)","linear-gradient(135deg,#d44d88,#421b43)","linear-gradient(135deg,#159ca0,#143b51)","linear-gradient(135deg,#d07b36,#4a251f)","linear-gradient(135deg,#4d77d5,#202653)","linear-gradient(135deg,#4da66b,#183a31)"];
+      const palette = palettes[(originalIndex < 0 ? i : originalIndex) % palettes.length];
+      return `<div class="song-row ${isPlaying?"playing":""}" data-index="${originalIndex}"><div class="song-cover" style="--cover-bg:${palette[originalIndex % palettes.length]}"><span>♫</span></div><div class="song-info"><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.artist || "Artista desconhecido")}</span></div><span class="song-genre">${escapeHtml(s.genre || "Outros")}</span><button class="song-play" data-play="${originalIndex}" aria-label="Reproduzir ${escapeHtml(s.title)}">${isPlaying?"Ⅱ":"▶"}</button></div>`;
+    };
+    renderVisibleTrackPage(renderRow);
+    return;
+  }
   const genreButton = event.target.closest("[data-genre]");
   if (genreButton) {
     selectedGenre = genreButton.dataset.genre;
