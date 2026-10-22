@@ -520,7 +520,10 @@ window.addEventListener('beforeinstallprompt', event => {
 });
 if (installButton) {
   installButton.addEventListener('click', async () => {
-    if (!deferredInstallPrompt) return;
+    if (!deferredInstallPrompt) {
+      alert('Para instalar no Android: toque nos três pontos (⋮) do Chrome e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.');
+      return;
+    }
     deferredInstallPrompt.prompt();
     await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
