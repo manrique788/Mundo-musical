@@ -440,8 +440,9 @@ function playSong(index) {
   // solicitações quando o usuário toca várias vezes em "próxima".
   audio.pause();
   audio.preload = "auto";
-  // Não forçar CORS no áudio: a reprodução normal de arquivos públicos do R2
-  // não deve depender da configuração CORS usada pelo equalizador.
+  // CORS deve ser definido antes de carregar a faixa para permitir Web Audio sem reabri-la depois.
+  // Mantém a configuração original usada pelo player; o R2 precisa autorizar CORS para o equalizador.
+  audio.crossOrigin = "anonymous";
   audio.src = song.audioUrl;
   audio.load();
   const playback = audio.play();
