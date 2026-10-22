@@ -62,7 +62,7 @@ async function enableAudioEnhancer(){
   if(mode==="voice"){enhancerMid.gain.value=Math.max(enhancerMid.gain.value,2.4);enhancerHigh.gain.value=Math.max(enhancerHigh.gain.value,1.5);}
   else if(mode==="bass")enhancerLow.gain.value=Math.max(enhancerLow.gain.value,4.5);
   setEnhancerEnabled(true);
- }catch(error){console.warn("Melhorador de áudio não ativado:",error);enhancerStatus("CORS não confirmado. Som original preservado; configure CORS no R2.",true);enhancerCrossOriginReady=false;}
+ }catch(error){console.warn("Melhorador de áudio não ativado:",error);const detail=(error&&error.message)?String(error.message):"erro desconhecido";enhancerStatus("Melhoria não ativada: "+detail+" • som original preservado.",true);enhancerCrossOriginReady=false;}
  finally{if(button)button.disabled=false;if(button&&!enhancerEnabled)button.textContent="Ativar melhoria";}
 }
 
