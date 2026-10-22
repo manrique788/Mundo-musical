@@ -419,7 +419,10 @@ function playSong(index) {
   audio.load();
   const playback = audio.play();
 
-  setScrollingTitle($("currentTitle"), song.title);
+  // Mantém o nome da faixa sempre visível no mini player, inclusive no Android.
+  const miniTitle = $("currentTitle");
+  miniTitle.textContent = song.title || "Música sem título";
+  miniTitle.setAttribute("aria-label", song.title || "Música sem título");
   $("currentArtist").textContent = (song.artist && !sameTrackText(song.artist, song.title)) ? song.artist : "Carregando música…";
   $("currentCover").textContent = "♫";
   $("playBtn").textContent = "Ⅱ";
@@ -558,13 +561,27 @@ $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("shuffleBtn").addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updateShuffleButton(); });
-$("quickEqualizerBtn").addEventListener("click",()=>{
- openExpandedPlayer();
+$("quickEqualizerBtn").addEventListener("click",(event)=>{
+ event.preventDefault();
+ event.stopPropagation();
+ const overlay=$("playerOverlay");
  const panel=$("audioEnhancerPanel");
+ const toggle=$("enhancerPanelToggle");
+ const arrow=$("enhancerPanelArrow");
+ // Abre o reprodutor primeiro e revela o painel antes de tentar rolar.
+ openExpandedPlayer();
  panel.hidden=false;
- $("enhancerPanelToggle").setAttribute("aria-expanded","true");
- $("enhancerPanelArrow").textContent="−";
- requestAnimationFrame(()=>panel.scrollIntoView({behavior:"smooth",block:"start"}));
+ toggle.setAttribute("aria-expanded","true");
+ arrow.textContent="−";
+ overlay.setAttribute("data-view","equalizer");
+ const scrollToEqualizer=()=>{
+   const container=overlay.querySelector(".expanded-player");
+   if(container && panel && !panel.hidden){
+     container.scrollTop=Math.max(0,panel.offsetTop-container.offsetTop-12);
+     panel.scrollIntoView({behavior:"auto",block:"start"});
+   }
+ };
+ requestAnimationFrame(()=>requestAnimationFrame(scrollToEqualizer));
 });
 $("enhancerPanelToggle").addEventListener("click",()=>{
  const panel=$("audioEnhancerPanel"),opening=panel.hidden;
@@ -612,7 +629,14 @@ function syncPlaybackIcons() {
   updatePlaybackRows();
 }
 audio.addEventListener("play", () => { syncPlaybackIcons(); if (currentIndex >= 0) updateMediaSession(songs[currentIndex]); });
-audio.addEventListener("playing", () => { syncPlaybackIcons(); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; });
+audio.addEventListener("playing", () => {
+  syncPlaybackIcons();
+  if (currentIndex >= 0 && songs[currentIndex]) {
+    const miniTitle = $("currentTitle");
+    if (miniTitle && !miniTitle.textContent.trim()) miniTitle.textContent = songs[currentIndex].title || "Música sem título";
+  }
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+});
 audio.addEventListener("pause", () => { syncPlaybackIcons(); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; });
 audio.addEventListener("ended", syncPlaybackIcons);
 renderGenres();
