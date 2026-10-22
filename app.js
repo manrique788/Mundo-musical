@@ -52,6 +52,15 @@ function setFlatEqualizer(){
 async function enableAudioEnhancer(){
  if(enhancerEnabled){setEnhancerEnabled(false);return;}
  if(!songs.length||currentIndex<0||!audio.currentSrc){enhancerStatus("Reproduza uma música antes de ativar.",true);return;}
+ // Verifica CORS antes de ligar Web Audio. Sem autorização CORS do R2,
+ // o navegador pode silenciar a faixa assim que createMediaElementSource é usado.
+ try {
+  const corsCheck = await fetch(audio.currentSrc, { method: "HEAD", mode: "cors", cache: "no-store" });
+  if (!corsCheck.ok) throw new Error("HTTP " + corsCheck.status);
+ } catch (_) {
+  enhancerStatus("Equalizador bloqueado: falta liberar CORS no Cloudflare R2. A música continuará tocando sem efeitos.", true);
+  return;
+ }
  const button=$("audioEnhancerToggle");
  if(button){button.disabled=true;button.textContent="Ativando…";}
  enhancerStatus("Preparando equalizador…");
