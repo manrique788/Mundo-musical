@@ -52,27 +52,29 @@ function setFlatEqualizer(){
 async function enableAudioEnhancer(){
  if(enhancerEnabled){setEnhancerEnabled(false);return;}
  if(!songs.length||currentIndex<0||!audio.currentSrc){enhancerStatus("Reproduza uma música antes de ativar.",true);return;}
- // Verifica CORS antes de ligar Web Audio. Sem autorização CORS do R2,
- // o navegador pode silenciar a faixa assim que createMediaElementSource é usado.
- try {
-  const corsCheck = await fetch(audio.currentSrc, { method: "HEAD", mode: "cors", cache: "no-store" });
-  if (!corsCheck.ok) throw new Error("HTTP " + corsCheck.status);
- } catch (_) {
-  enhancerStatus("Equalizador bloqueado: falta liberar CORS no Cloudflare R2. A música continuará tocando sem efeitos.", true);
-  return;
- }
  const button=$("audioEnhancerToggle");
  if(button){button.disabled=true;button.textContent="Ativando…";}
  enhancerStatus("Preparando equalizador…");
  try{
-  if(!enhancerContext){
-   const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-   if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
-   enhancerContext=new AudioContextClass();
-   enhancerSource=enhancerContext.createMediaElementSource(audio);
+  // Inicia o AudioContext enquanto o toque do usuário ainda está ativo.
+  // Esperar por uma requisição de rede antes do resume() pode deixar o contexto
+  // suspenso no Android e fazer o áudio parecer parar.
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
+  if(!enhancerContext)enhancerContext=new AudioContextClass();
+  const resumePromise=enhancerContext.state==="suspended"?enhancerContext.resume():Promise.resolve();
 
-   // Liga primeiro o caminho original: se a criação de algum filtro falhar,
-   // o áudio continua audível sem efeitos.
+  // Verifica CORS sem tocar na origem da música nem conectá-la ao Web Audio.
+  // Se a verificação falhar, o áudio original permanece intacto.
+  const corsPromise=fetch(audio.currentSrc,{method:"HEAD",mode:"cors",cache:"no-store"});
+  const results=await Promise.allSettled([resumePromise,corsPromise]);
+  if(results[0].status==="rejected")throw new Error("o navegador não conseguiu iniciar o áudio do equalizador");
+  if(results[1].status==="rejected"||!results[1].value.ok){
+   enhancerStatus("Equalizador não ativado: o R2 não confirmou CORS. A música original foi mantida.",true);
+   return;
+  }
+  if(!enhancerSource){
+   enhancerSource=enhancerContext.createMediaElementSource(audio);
    enhancerDryGain=enhancerContext.createGain();
    enhancerWetGain=enhancerContext.createGain();
    enhancerDryGain.gain.value=1;
@@ -110,7 +112,6 @@ async function enableAudioEnhancer(){
  }catch(error){
   console.warn("Equalizador não ativado:",error);
   const detail=(error&&error.message)?String(error.message):"erro desconhecido";
-  // Mantém o caminho seco ativo e não troca/recarrega a faixa que está tocando.
   if(enhancerDryGain&&enhancerContext){
    try{enhancerDryGain.gain.setValueAtTime(1,enhancerContext.currentTime);}catch(_){}
    if(enhancerWetGain)try{enhancerWetGain.gain.setValueAtTime(0,enhancerContext.currentTime);}catch(_){}
@@ -122,7 +123,6 @@ async function enableAudioEnhancer(){
   if(button&&!enhancerEnabled){button.textContent="Ativar melhoria";button.setAttribute("aria-pressed","false");}
  }
 }
-
 let songs = [];
 let visibleSongs = [];
 let currentIndex = -1;
