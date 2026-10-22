@@ -673,3 +673,7 @@
   color: #061116;
   border-color: #20c8e8;
 }
+
+
+/* Acesso rápido para instalar no celular */
+.install-button{border:1px solid #5b478c;background:#211a34;color:#d9ccff;border-radius:9px;padding:9px 11px;font:700 11px 'DM Sans';cursor:pointer;white-space:nowrap}.install-button:hover{background:#30254d;border-color:#9278d0}@media(max-width:650px){.install-button{padding:8px 9px;font-size:10px}.topbar{gap:7px}}

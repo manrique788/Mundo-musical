@@ -2,9 +2,16 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b0b0f">
   <meta name="description" content="Mundo Musical — descubra e ouça músicas online.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mundo Musical">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>Mundo Musical — Ouça do seu jeito</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,6 +39,7 @@
       <header class="topbar">
         <div class="mobile-brand"><span class="brand-mark">♫</span> Mundo<span class="brand-accent">Musical</span></div>
         <div class="search-wrap"><span class="search-icon">⌕</span><input id="searchInput" type="search" placeholder="Buscar música, artista ou gênero..." aria-label="Buscar música"></div>
+        <button class="install-button" id="installButton" type="button" hidden>＋ Instalar</button>
         <button class="profile-dot" aria-label="Perfil">♪</button>
       </header>
 
@@ -100,5 +108,8 @@
     </section>
   </div>
   <script src="app.js?v=22"></script>
+  <script>
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  </script>
 </body>
 </html>
