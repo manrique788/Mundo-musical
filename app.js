@@ -441,8 +441,8 @@ function playSong(index) {
   audio.pause();
   audio.preload = "auto";
   // CORS deve ser definido antes de carregar a faixa para permitir Web Audio sem reabri-la depois.
-  // Não forçar CORS aqui: sem cabeçalhos CORS no R2 isso pode bloquear o áudio.
-  // Para usar Web Audio/equalizador, configure CORS no bucket antes de ativá-lo.
+  // Mantém a configuração original usada pelo player; o R2 precisa autorizar CORS para o equalizador.
+  audio.crossOrigin = "anonymous";
   audio.src = song.audioUrl;
   audio.load();
   const playback = audio.play();
