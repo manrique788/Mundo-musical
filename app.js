@@ -52,41 +52,66 @@ function setFlatEqualizer(){
 async function enableAudioEnhancer(){
  if(enhancerEnabled){setEnhancerEnabled(false);return;}
  if(!songs.length||currentIndex<0||!audio.currentSrc){enhancerStatus("Reproduza uma música antes de ativar.",true);return;}
- const button=$("audioEnhancerToggle");if(button){button.disabled=true;button.textContent="Verificando áudio…";}
- enhancerStatus("Verificando acesso ao áudio…");
+ const button=$("audioEnhancerToggle");
+ if(button){button.disabled=true;button.textContent="Ativando…";}
+ enhancerStatus("Preparando equalizador…");
  try{
-  const response=await fetch(audio.currentSrc,{method:"GET",mode:"cors",cache:"no-store",headers:{Range:"bytes=0-0"}});
-  if(!response.ok)throw new Error("servidor de áudio respondeu HTTP "+response.status);
-  if(response.body)await response.body.cancel();
-  enhancerCrossOriginReady=true;
   if(!enhancerContext){
    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
    if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
-   const sourceUrl=audio.currentSrc,resumeAt=audio.currentTime||0,wasPlaying=!audio.paused;
-   audio.pause();audio.crossOrigin="anonymous";
-   const metadataReady=new Promise((resolve,reject)=>{
-    audio.addEventListener("loadedmetadata",resolve,{once:true});
-    audio.addEventListener("error",()=>reject(new Error("falha ao reabrir o áudio com CORS")), {once:true});
+   enhancerContext=new AudioContextClass();
+   enhancerSource=enhancerContext.createMediaElementSource(audio);
+
+   // Liga primeiro o caminho original: se a criação de algum filtro falhar,
+   // o áudio continua audível sem efeitos.
+   enhancerDryGain=enhancerContext.createGain();
+   enhancerWetGain=enhancerContext.createGain();
+   enhancerDryGain.gain.value=1;
+   enhancerWetGain.gain.value=0;
+   enhancerSource.connect(enhancerDryGain);
+   enhancerDryGain.connect(enhancerContext.destination);
+
+   enhancerPreamp=enhancerContext.createGain();
+   enhancerPreamp.gain.value=1;
+   enhancerFilters=EQ_BANDS.map(band=>{
+    const filter=enhancerContext.createBiquadFilter();
+    filter.type=band.type;
+    filter.frequency.value=band.freq;
+    if(band.type==="peaking")filter.Q.value=1.05;
+    filter.gain.value=0;
+    return filter;
    });
-   audio.src=sourceUrl;audio.load();
-   enhancerContext=new AudioContextClass();enhancerSource=enhancerContext.createMediaElementSource(audio);
-   enhancerPreamp=enhancerContext.createGain();enhancerPreamp.gain.value=1;
-   enhancerFilters=EQ_BANDS.map(band=>{const filter=enhancerContext.createBiquadFilter();filter.type=band.type;filter.frequency.value=band.freq;if(band.type==="peaking")filter.Q.value=1.05;filter.gain.value=0;return filter;});
-   enhancerCompressor=enhancerContext.createDynamicsCompressor();enhancerCompressor.threshold.value=-10;enhancerCompressor.knee.value=8;enhancerCompressor.ratio.value=2.5;enhancerCompressor.attack.value=.004;enhancerCompressor.release.value=.2;
-   enhancerDryGain=enhancerContext.createGain();enhancerWetGain=enhancerContext.createGain();enhancerDryGain.gain.value=1;enhancerWetGain.gain.value=0;
-   enhancerSource.connect(enhancerDryGain);enhancerDryGain.connect(enhancerContext.destination);
-   let previous=enhancerPreamp;enhancerSource.connect(enhancerPreamp);
+   enhancerCompressor=enhancerContext.createDynamicsCompressor();
+   enhancerCompressor.threshold.value=-10;
+   enhancerCompressor.knee.value=8;
+   enhancerCompressor.ratio.value=2.5;
+   enhancerCompressor.attack.value=.004;
+   enhancerCompressor.release.value=.2;
+   let previous=enhancerPreamp;
+   enhancerSource.connect(enhancerPreamp);
    for(const filter of enhancerFilters){previous.connect(filter);previous=filter;}
-   previous.connect(enhancerCompressor);enhancerCompressor.connect(enhancerWetGain);enhancerWetGain.connect(enhancerContext.destination);
-   await metadataReady;
-   if(Number.isFinite(audio.duration)&&resumeAt>0)audio.currentTime=Math.min(resumeAt,Math.max(0,audio.duration-.25));
-   if(wasPlaying)await audio.play();
+   previous.connect(enhancerCompressor);
+   enhancerCompressor.connect(enhancerWetGain);
+   enhancerWetGain.connect(enhancerContext.destination);
   }
   if(enhancerContext.state==="suspended")await enhancerContext.resume();
+  enhancerCrossOriginReady=true;
   applyEnhancerSettings();
   setEnhancerEnabled(true);
- }catch(error){console.warn("Equalizador não ativado:",error);const detail=(error&&error.message)?String(error.message):"erro desconhecido";enhancerStatus("Falha ao ativar: "+detail+" • som original preservado.",true);enhancerCrossOriginReady=false;}
- finally{if(button)button.disabled=false;if(button&&!enhancerEnabled)button.textContent="Ativar melhoria";}
+ }catch(error){
+  console.warn("Equalizador não ativado:",error);
+  const detail=(error&&error.message)?String(error.message):"erro desconhecido";
+  // Mantém o caminho seco ativo e não troca/recarrega a faixa que está tocando.
+  if(enhancerDryGain&&enhancerContext){
+   try{enhancerDryGain.gain.setValueAtTime(1,enhancerContext.currentTime);}catch(_){}
+   if(enhancerWetGain)try{enhancerWetGain.gain.setValueAtTime(0,enhancerContext.currentTime);}catch(_){}
+  }
+  enhancerEnabled=false;
+  enhancerStatus("Equalizador indisponível: "+detail+" • música mantida sem efeitos.",true);
+ }finally{
+  if(button)button.disabled=false;
+  if(button&&!enhancerEnabled){button.textContent="Ativar melhoria";button.setAttribute("aria-pressed","false");}
+ }
 }
 
 let songs = [];
@@ -415,6 +440,8 @@ function playSong(index) {
   // solicitações quando o usuário toca várias vezes em "próxima".
   audio.pause();
   audio.preload = "auto";
+  // CORS deve ser definido antes de carregar a faixa para permitir Web Audio sem reabri-la depois.
+  audio.crossOrigin = "anonymous";
   audio.src = song.audioUrl;
   audio.load();
   const playback = audio.play();
