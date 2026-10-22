@@ -66,11 +66,15 @@ async function enableAudioEnhancer(){
 
   // Verifica CORS sem tocar na origem da música nem conectá-la ao Web Audio.
   // Se a verificação falhar, o áudio original permanece intacto.
-  const corsPromise=fetch(audio.currentSrc,{method:"HEAD",mode:"cors",cache:"no-store"});
+  // Testa o mesmo tipo de pedido usado para baixar áudio, com Range de 1 byte.
+  // HEAD pode ser bloqueado por algumas configurações mesmo quando GET funciona.
+  const corsPromise=fetch(audio.currentSrc,{method:"GET",headers:{Range:"bytes=0-0"},mode:"cors",cache:"no-store"});
   const results=await Promise.allSettled([resumePromise,corsPromise]);
   if(results[0].status==="rejected")throw new Error("o navegador não conseguiu iniciar o áudio do equalizador");
-  if(results[1].status==="rejected"||!results[1].value.ok){
-   enhancerStatus("Equalizador não ativado: o R2 não confirmou CORS. A música original foi mantida.",true);
+  const corsResponse=results[1].status==="fulfilled"?results[1].value:null;
+  if(corsResponse&&corsResponse.body)corsResponse.body.cancel().catch(()=>{});
+  if(!corsResponse||!corsResponse.ok){
+   enhancerStatus("Equalizador não ativado: o navegador não confirmou acesso CORS ao áudio. A música original foi mantida.",true);
    return;
   }
   if(!enhancerSource){
