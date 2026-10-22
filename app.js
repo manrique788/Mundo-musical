@@ -561,28 +561,6 @@ $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("shuffleBtn").addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updateShuffleButton(); });
-$("quickEqualizerBtn").addEventListener("click",(event)=>{
- event.preventDefault();
- event.stopPropagation();
- const overlay=$("playerOverlay");
- const panel=$("audioEnhancerPanel");
- const toggle=$("enhancerPanelToggle");
- const arrow=$("enhancerPanelArrow");
- // Abre o reprodutor primeiro e revela o painel antes de tentar rolar.
- openExpandedPlayer();
- panel.hidden=false;
- toggle.setAttribute("aria-expanded","true");
- arrow.textContent="−";
- overlay.setAttribute("data-view","equalizer");
- const scrollToEqualizer=()=>{
-   const container=overlay.querySelector(".expanded-player");
-   if(container && panel && !panel.hidden){
-     container.scrollTop=Math.max(0,panel.offsetTop-container.offsetTop-12);
-     panel.scrollIntoView({behavior:"auto",block:"start"});
-   }
- };
- requestAnimationFrame(()=>requestAnimationFrame(scrollToEqualizer));
-});
 $("enhancerPanelToggle").addEventListener("click",()=>{
  const panel=$("audioEnhancerPanel"),opening=panel.hidden;
  panel.hidden=!opening;
