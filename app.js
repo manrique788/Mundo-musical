@@ -1,5 +1,71 @@
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
+
+/* Melhorador de áudio via Web Audio API. A ativação só ocorre após teste CORS. */
+let enhancerContext=null, enhancerSource=null, enhancerLow=null, enhancerMid=null, enhancerHigh=null, enhancerCompressor=null, enhancerDryGain=null, enhancerWetGain=null;
+let enhancerEnabled=false, enhancerCrossOriginReady=false;
+function enhancerStatus(message,isError=false){const el=$("audioEnhancerStatus");if(el){el.textContent=message;el.classList.toggle("error",isError);}}
+function selectedEnhancerLabel(){const mode=$("audioEnhancerMode")?.value||"smart";return({smart:"Inteligente",voice:"Voz nítida",bass:"Graves reforçados",balanced:"Equilibrado"})[mode]||"Inteligente";}
+function applyEnhancerSettings(){
+ if(!enhancerLow||!enhancerMid||!enhancerHigh||!enhancerCompressor)return;
+ const bass=Number($("enhancerBass")?.value??4),mid=Number($("enhancerMid")?.value??5),treble=Number($("enhancerTreble")?.value??6);
+ enhancerLow.gain.value=(bass-5)*1.5;enhancerMid.gain.value=(mid-5)*1.2;enhancerHigh.gain.value=(treble-5)*1.5;
+ enhancerCompressor.threshold.value=-18;enhancerCompressor.knee.value=18;enhancerCompressor.ratio.value=2.2;enhancerCompressor.attack.value=.004;enhancerCompressor.release.value=.22;
+ for(const id of ["enhancerBass","enhancerMid","enhancerTreble"]){const input=$(id),out=$(id+"Value");if(input&&out)out.textContent=input.value+"/10";}
+}
+function setEnhancerEnabled(enabled){
+ enhancerEnabled=enabled;
+ if(enhancerDryGain&&enhancerWetGain){const now=enhancerContext.currentTime;enhancerDryGain.gain.setTargetAtTime(enabled?0:1,now,.025);enhancerWetGain.gain.setTargetAtTime(enabled?1:0,now,.025);}
+ const button=$("audioEnhancerToggle");if(button){button.textContent=enabled?"Desativar melhoria":"Ativar melhoria";button.classList.toggle("enabled",enabled);button.setAttribute("aria-pressed",String(enabled));}
+ enhancerStatus(enabled?"Melhoria ativa • "+selectedEnhancerLabel():(enhancerCrossOriginReady?"Desligado • som original":"Desligado • CORS ainda não verificado"));
+}
+function applyEnhancerPreset(){
+ const mode=$("audioEnhancerMode")?.value||"smart",values=({smart:[4,5,6],voice:[3,7,7],bass:[8,5,5],balanced:[5,5,5]})[mode]||[4,5,6];
+ ["enhancerBass","enhancerMid","enhancerTreble"].forEach((id,i)=>{if($(id))$(id).value=String(values[i]);});applyEnhancerSettings();
+ if(enhancerEnabled)enhancerStatus("Melhoria ativa • "+selectedEnhancerLabel());
+}
+async function enableAudioEnhancer(){
+ if(enhancerEnabled){setEnhancerEnabled(false);return;}
+ if(!songs.length||currentIndex<0||!audio.currentSrc){enhancerStatus("Reproduza uma música antes de ativar.",true);return;}
+ const button=$("audioEnhancerToggle");if(button){button.disabled=true;button.textContent="Verificando áudio…";}
+ enhancerStatus("Verificando acesso CORS ao áudio…");
+ try{
+  // Uma requisição de 1 byte testa CORS sem baixar a faixa inteira.
+  const response=await fetch(audio.currentSrc,{method:"GET",mode:"cors",cache:"no-store",headers:{Range:"bytes=0-0"}});
+  if(!response.ok)throw new Error("O servidor de áudio respondeu HTTP "+response.status);
+  if(response.body)await response.body.cancel();
+  enhancerCrossOriginReady=true;
+  if(!enhancerContext){
+   const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+   if(!AudioContextClass)throw new Error("Este navegador não oferece Web Audio API.");
+   const sourceUrl=audio.currentSrc||audio.src,resumeAt=audio.currentTime||0,wasPlaying=!audio.paused;
+   audio.pause();audio.crossOrigin="anonymous";
+   const metadataReady=new Promise((resolve,reject)=>{
+    audio.addEventListener("loadedmetadata",resolve,{once:true});
+    audio.addEventListener("error",()=>reject(new Error("Falha ao reabrir o áudio com CORS.")),{once:true});
+   });
+   audio.src=sourceUrl;audio.load();
+   enhancerContext=new AudioContextClass();enhancerSource=enhancerContext.createMediaElementSource(audio);
+   enhancerLow=enhancerContext.createBiquadFilter();enhancerLow.type="lowshelf";enhancerLow.frequency.value=120;
+   enhancerMid=enhancerContext.createBiquadFilter();enhancerMid.type="peaking";enhancerMid.frequency.value=1800;enhancerMid.Q.value=.85;
+   enhancerHigh=enhancerContext.createBiquadFilter();enhancerHigh.type="highshelf";enhancerHigh.frequency.value=7500;
+   enhancerCompressor=enhancerContext.createDynamicsCompressor();enhancerDryGain=enhancerContext.createGain();enhancerWetGain=enhancerContext.createGain();
+   enhancerSource.connect(enhancerDryGain);enhancerDryGain.connect(enhancerContext.destination);
+   enhancerSource.connect(enhancerLow);enhancerLow.connect(enhancerMid);enhancerMid.connect(enhancerHigh);enhancerHigh.connect(enhancerCompressor);enhancerCompressor.connect(enhancerWetGain);enhancerWetGain.connect(enhancerContext.destination);
+   await metadataReady;
+   if(Number.isFinite(audio.duration)&&resumeAt>0)audio.currentTime=Math.min(resumeAt,Math.max(0,audio.duration-.25));
+   if(wasPlaying)await audio.play();
+  }
+  if(enhancerContext.state==="suspended")await enhancerContext.resume();
+  applyEnhancerSettings();
+  const mode=$("audioEnhancerMode")?.value||"smart";
+  if(mode==="voice"){enhancerMid.gain.value=Math.max(enhancerMid.gain.value,2.4);enhancerHigh.gain.value=Math.max(enhancerHigh.gain.value,1.5);}
+  else if(mode==="bass")enhancerLow.gain.value=Math.max(enhancerLow.gain.value,4.5);
+  setEnhancerEnabled(true);
+ }catch(error){console.warn("Melhorador de áudio não ativado:",error);enhancerStatus("CORS não confirmado. Som original preservado; configure CORS no R2.",true);enhancerCrossOriginReady=false;}
+ finally{if(button)button.disabled=false;if(button&&!enhancerEnabled)button.textContent="Ativar melhoria";}
+}
+
 let songs = [];
 let visibleSongs = [];
 let currentIndex = -1;
@@ -469,6 +535,10 @@ $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("shuffleBtn").addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updateShuffleButton(); });
+$("audioEnhancerToggle").addEventListener("click",enableAudioEnhancer);
+$("audioEnhancerMode").addEventListener("change",applyEnhancerPreset);
+["enhancerBass","enhancerMid","enhancerTreble"].forEach(id=>$(id).addEventListener("input",()=>{applyEnhancerSettings();if(enhancerEnabled)enhancerStatus("Melhoria ativa • "+selectedEnhancerLabel());}));
+applyEnhancerSettings();
 updateShuffleButton();
 $("prevFolderBtn").addEventListener("click", () => stepFolder(-1));
 $("nextFolderBtn").addEventListener("click", () => stepFolder(1));
