@@ -677,3 +677,17 @@
 
 /* Acesso rápido para instalar no celular */
 .install-button{border:1px solid #5b478c;background:#211a34;color:#d9ccff;border-radius:9px;padding:9px 11px;font:700 11px 'DM Sans';cursor:pointer;white-space:nowrap}.install-button:hover{background:#30254d;border-color:#9278d0}@media(max-width:650px){.install-button{padding:8px 9px;font-size:10px}.topbar{gap:7px}}
+
+/* Melhorador de áudio */
+.audio-enhancer{width:min(100%,460px);margin:0 auto 18px;padding:17px;border:1px solid #373047;border-radius:18px;background:linear-gradient(145deg,#191622,#101018);text-align:left}
+.enhancer-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.enhancer-heading strong,.enhancer-heading span{display:block}.enhancer-heading strong{font:700 16px Outfit,sans-serif;color:#f7f3ff}
+.enhancer-heading span{margin-top:5px;color:#a5a0b5;font-size:11px;line-height:1.4}.enhancer-heading span.error{color:#ffb4a8}
+#audioEnhancerToggle{flex-shrink:0;border:1px solid #8e75d0;border-radius:999px;padding:10px 12px;background:#30234b;color:#f3edff;font:700 11px 'DM Sans',sans-serif;cursor:pointer}
+#audioEnhancerToggle.enabled{background:#c3b1ff;color:#171025;border-color:#c3b1ff}#audioEnhancerToggle:disabled{opacity:.65;cursor:wait}
+.enhancer-mode-label{display:block;margin-bottom:7px;color:#b9b3c8;font-size:11px}
+#audioEnhancerMode{width:100%;padding:11px 12px;border:1px solid #383044;border-radius:10px;background:#111018;color:#f7f3ff;font:500 13px 'DM Sans',sans-serif}
+.enhancer-sliders{display:grid;gap:13px;margin-top:17px}.enhancer-sliders label{display:block;color:#ded8ed;font-size:12px}
+.enhancer-sliders label span{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px}.enhancer-sliders output{color:#bdaaff;font-variant-numeric:tabular-nums}
+.enhancer-sliders input{display:block;width:100%;accent-color:#a78bfa}.enhancer-note{margin:14px 0 0;color:#8f899f;font-size:10px;line-height:1.6}
+@media(max-width:650px){.audio-enhancer{padding:14px;margin-bottom:15px}.enhancer-heading{align-items:flex-start;flex-wrap:wrap}.enhancer-heading strong{font-size:15px}#audioEnhancerToggle{font-size:10px;padding:9px 11px}}
