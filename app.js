@@ -558,6 +558,14 @@ $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("shuffleBtn").addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updateShuffleButton(); });
+$("quickEqualizerBtn").addEventListener("click",()=>{
+ openExpandedPlayer();
+ const panel=$("audioEnhancerPanel");
+ panel.hidden=false;
+ $("enhancerPanelToggle").setAttribute("aria-expanded","true");
+ $("enhancerPanelArrow").textContent="−";
+ requestAnimationFrame(()=>panel.scrollIntoView({behavior:"smooth",block:"start"}));
+});
 $("enhancerPanelToggle").addEventListener("click",()=>{
  const panel=$("audioEnhancerPanel"),opening=panel.hidden;
  panel.hidden=!opening;
