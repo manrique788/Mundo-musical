@@ -1,68 +1,91 @@
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
 
-/* Melhorador de áudio via Web Audio API. A ativação só ocorre após teste CORS. */
-let enhancerContext=null, enhancerSource=null, enhancerLow=null, enhancerMid=null, enhancerHigh=null, enhancerCompressor=null, enhancerDryGain=null, enhancerWetGain=null;
+/* Equalizador profissional de 10 bandas com caminho seco de segurança. */
+let enhancerContext=null, enhancerSource=null, enhancerFilters=[], enhancerCompressor=null, enhancerPreamp=null, enhancerDryGain=null, enhancerWetGain=null;
 let enhancerEnabled=false, enhancerCrossOriginReady=false;
+const EQ_BANDS=[
+ {id:"eq32",freq:32,type:"lowshelf"},{id:"eq64",freq:64,type:"peaking"},{id:"eq125",freq:125,type:"peaking"},
+ {id:"eq250",freq:250,type:"peaking"},{id:"eq500",freq:500,type:"peaking"},{id:"eq1000",freq:1000,type:"peaking"},
+ {id:"eq2000",freq:2000,type:"peaking"},{id:"eq4000",freq:4000,type:"peaking"},{id:"eq8000",freq:8000,type:"peaking"},{id:"eq16000",freq:16000,type:"highshelf"}
+];
+const EQ_PRESETS={
+ smart:{name:"Inteligente",preamp:-1,gains:[1,2,2,0,-1,0,1,2,2,1]},
+ flat:{name:"Flat (neutro)",preamp:0,gains:[0,0,0,0,0,0,0,0,0,0]},
+ pop:{name:"Pop",preamp:-2,gains:[2,2,1,0,-1,0,2,2,1,2]},
+ rock:{name:"Rock",preamp:-2,gains:[3,2,-1,-2,0,1,2,3,2,2]},
+ hiphop:{name:"Hip-hop / Funk",preamp:-3,gains:[4,4,3,1,-1,0,1,2,1,1]},
+ electronic:{name:"Eletrônica / Mega Funk",preamp:-3,gains:[4,3,1,0,-1,0,2,2,3,3]},
+ voice:{name:"Voz clara",preamp:-1,gains:[-2,-1,0,1,2,3,3,2,1,0]},
+ bass:{name:"Graves reforçados",preamp:-3,gains:[5,4,3,1,0,0,0,1,1,0]},
+ classical:{name:"Clássico",preamp:-1,gains:[2,1,0,-1,-1,0,1,2,2,3]}
+};
 function enhancerStatus(message,isError=false){const el=$("audioEnhancerStatus");if(el){el.textContent=message;el.classList.toggle("error",isError);}}
-function selectedEnhancerLabel(){const mode=$("audioEnhancerMode")?.value||"smart";return({smart:"Inteligente",voice:"Voz nítida",bass:"Graves reforçados",balanced:"Equilibrado"})[mode]||"Inteligente";}
+function selectedEnhancerLabel(){const mode=$("audioEnhancerMode")?.value||"smart";return EQ_PRESETS[mode]?.name||"Inteligente";}
+function formatDb(value){const n=Number(value);return (n>0?"+":n<0?"−":"")+Math.abs(n)+" dB";}
 function applyEnhancerSettings(){
- if(!enhancerLow||!enhancerMid||!enhancerHigh||!enhancerCompressor)return;
- const bass=Number($("enhancerBass")?.value??4),mid=Number($("enhancerMid")?.value??5),treble=Number($("enhancerTreble")?.value??6);
- enhancerLow.gain.value=(bass-5)*1.5;enhancerMid.gain.value=(mid-5)*1.2;enhancerHigh.gain.value=(treble-5)*1.5;
- enhancerCompressor.threshold.value=-18;enhancerCompressor.knee.value=18;enhancerCompressor.ratio.value=2.2;enhancerCompressor.attack.value=.004;enhancerCompressor.release.value=.22;
- for(const id of ["enhancerBass","enhancerMid","enhancerTreble"]){const input=$(id),out=$(id+"Value");if(input&&out)out.textContent=input.value+"/10";}
+ const preampInput=$("enhancerPreamp");
+ if(preampInput){const db=Number(preampInput.value);if($("enhancerPreampValue"))$("enhancerPreampValue").textContent=formatDb(db);if(enhancerPreamp)enhancerPreamp.gain.setTargetAtTime(Math.pow(10,db/20),enhancerContext.currentTime,.025);}
+ EQ_BANDS.forEach((band,index)=>{
+  const input=$(band.id),out=$(band.id+"Value");if(!input)return;
+  const gain=Number(input.value);if(out)out.textContent=formatDb(gain);
+  if(enhancerFilters[index])enhancerFilters[index].gain.setTargetAtTime(gain,enhancerContext.currentTime,.025);
+ });
 }
 function setEnhancerEnabled(enabled){
  enhancerEnabled=enabled;
  if(enhancerDryGain&&enhancerWetGain){const now=enhancerContext.currentTime;enhancerDryGain.gain.setTargetAtTime(enabled?0:1,now,.025);enhancerWetGain.gain.setTargetAtTime(enabled?1:0,now,.025);}
  const button=$("audioEnhancerToggle");if(button){button.textContent=enabled?"Desativar melhoria":"Ativar melhoria";button.classList.toggle("enabled",enabled);button.setAttribute("aria-pressed",String(enabled));}
- enhancerStatus(enabled?"Melhoria ativa • "+selectedEnhancerLabel():(enhancerCrossOriginReady?"Desligado • som original":"Desligado • CORS ainda não verificado"));
+ enhancerStatus(enabled?"Equalizador ativo • "+selectedEnhancerLabel():(enhancerCrossOriginReady?"Desligado • som original":"Desligado • CORS ainda não verificado"));
 }
 function applyEnhancerPreset(){
- const mode=$("audioEnhancerMode")?.value||"smart",values=({smart:[4,5,6],voice:[3,7,7],bass:[8,5,5],balanced:[5,5,5]})[mode]||[4,5,6];
- ["enhancerBass","enhancerMid","enhancerTreble"].forEach((id,i)=>{if($(id))$(id).value=String(values[i]);});applyEnhancerSettings();
- if(enhancerEnabled)enhancerStatus("Melhoria ativa • "+selectedEnhancerLabel());
+ const preset=EQ_PRESETS[$("audioEnhancerMode")?.value||"smart"]||EQ_PRESETS.smart;
+ if($("enhancerPreamp"))$("enhancerPreamp").value=String(preset.preamp);
+ EQ_BANDS.forEach((band,index)=>{const input=$(band.id);if(input)input.value=String(preset.gains[index]);});
+ applyEnhancerSettings();
+ if(enhancerEnabled)enhancerStatus("Equalizador ativo • "+preset.name);
+}
+function setFlatEqualizer(){
+ $("audioEnhancerMode").value="flat";
+ applyEnhancerPreset();
 }
 async function enableAudioEnhancer(){
  if(enhancerEnabled){setEnhancerEnabled(false);return;}
  if(!songs.length||currentIndex<0||!audio.currentSrc){enhancerStatus("Reproduza uma música antes de ativar.",true);return;}
  const button=$("audioEnhancerToggle");if(button){button.disabled=true;button.textContent="Verificando áudio…";}
- enhancerStatus("Verificando acesso CORS ao áudio…");
+ enhancerStatus("Verificando acesso ao áudio…");
  try{
-  // Uma requisição de 1 byte testa CORS sem baixar a faixa inteira.
   const response=await fetch(audio.currentSrc,{method:"GET",mode:"cors",cache:"no-store",headers:{Range:"bytes=0-0"}});
-  if(!response.ok)throw new Error("O servidor de áudio respondeu HTTP "+response.status);
+  if(!response.ok)throw new Error("servidor de áudio respondeu HTTP "+response.status);
   if(response.body)await response.body.cancel();
   enhancerCrossOriginReady=true;
   if(!enhancerContext){
    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-   if(!AudioContextClass)throw new Error("Este navegador não oferece Web Audio API.");
-   const sourceUrl=audio.currentSrc||audio.src,resumeAt=audio.currentTime||0,wasPlaying=!audio.paused;
+   if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
+   const sourceUrl=audio.currentSrc,resumeAt=audio.currentTime||0,wasPlaying=!audio.paused;
    audio.pause();audio.crossOrigin="anonymous";
    const metadataReady=new Promise((resolve,reject)=>{
     audio.addEventListener("loadedmetadata",resolve,{once:true});
-    audio.addEventListener("error",()=>reject(new Error("Falha ao reabrir o áudio com CORS.")),{once:true});
+    audio.addEventListener("error",()=>reject(new Error("falha ao reabrir o áudio com CORS")), {once:true});
    });
    audio.src=sourceUrl;audio.load();
    enhancerContext=new AudioContextClass();enhancerSource=enhancerContext.createMediaElementSource(audio);
-   enhancerLow=enhancerContext.createBiquadFilter();enhancerLow.type="lowshelf";enhancerLow.frequency.value=120;
-   enhancerMid=enhancerContext.createBiquadFilter();enhancerMid.type="peaking";enhancerMid.frequency.value=1800;enhancerMid.Q.value=.85;
-   enhancerHigh=enhancerContext.createBiquadFilter();enhancerHigh.type="highshelf";enhancerHigh.frequency.value=7500;
-   enhancerCompressor=enhancerContext.createDynamicsCompressor();enhancerDryGain=enhancerContext.createGain();enhancerWetGain=enhancerContext.createGain();
+   enhancerPreamp=enhancerContext.createGain();enhancerPreamp.gain.value=1;
+   enhancerFilters=EQ_BANDS.map(band=>{const filter=enhancerContext.createBiquadFilter();filter.type=band.type;filter.frequency.value=band.freq;if(band.type==="peaking")filter.Q.value=1.05;filter.gain.value=0;return filter;});
+   enhancerCompressor=enhancerContext.createDynamicsCompressor();enhancerCompressor.threshold.value=-10;enhancerCompressor.knee.value=8;enhancerCompressor.ratio.value=2.5;enhancerCompressor.attack.value=.004;enhancerCompressor.release.value=.2;
+   enhancerDryGain=enhancerContext.createGain();enhancerWetGain=enhancerContext.createGain();enhancerDryGain.gain.value=1;enhancerWetGain.gain.value=0;
    enhancerSource.connect(enhancerDryGain);enhancerDryGain.connect(enhancerContext.destination);
-   enhancerSource.connect(enhancerLow);enhancerLow.connect(enhancerMid);enhancerMid.connect(enhancerHigh);enhancerHigh.connect(enhancerCompressor);enhancerCompressor.connect(enhancerWetGain);enhancerWetGain.connect(enhancerContext.destination);
+   let previous=enhancerPreamp;enhancerSource.connect(enhancerPreamp);
+   for(const filter of enhancerFilters){previous.connect(filter);previous=filter;}
+   previous.connect(enhancerCompressor);enhancerCompressor.connect(enhancerWetGain);enhancerWetGain.connect(enhancerContext.destination);
    await metadataReady;
    if(Number.isFinite(audio.duration)&&resumeAt>0)audio.currentTime=Math.min(resumeAt,Math.max(0,audio.duration-.25));
    if(wasPlaying)await audio.play();
   }
   if(enhancerContext.state==="suspended")await enhancerContext.resume();
   applyEnhancerSettings();
-  const mode=$("audioEnhancerMode")?.value||"smart";
-  if(mode==="voice"){enhancerMid.gain.value=Math.max(enhancerMid.gain.value,2.4);enhancerHigh.gain.value=Math.max(enhancerHigh.gain.value,1.5);}
-  else if(mode==="bass")enhancerLow.gain.value=Math.max(enhancerLow.gain.value,4.5);
   setEnhancerEnabled(true);
- }catch(error){console.warn("Melhorador de áudio não ativado:",error);const detail=(error&&error.message)?String(error.message):"erro desconhecido";enhancerStatus("Melhoria não ativada: "+detail+" • som original preservado.",true);enhancerCrossOriginReady=false;}
+ }catch(error){console.warn("Equalizador não ativado:",error);const detail=(error&&error.message)?String(error.message):"erro desconhecido";enhancerStatus("Falha ao ativar: "+detail+" • som original preservado.",true);enhancerCrossOriginReady=false;}
  finally{if(button)button.disabled=false;if(button&&!enhancerEnabled)button.textContent="Ativar melhoria";}
 }
 
