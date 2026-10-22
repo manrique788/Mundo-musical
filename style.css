@@ -691,3 +691,25 @@
 .enhancer-sliders label span{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px}.enhancer-sliders output{color:#bdaaff;font-variant-numeric:tabular-nums}
 .enhancer-sliders input{display:block;width:100%;accent-color:#a78bfa}.enhancer-note{margin:14px 0 0;color:#8f899f;font-size:10px;line-height:1.6}
 @media(max-width:650px){.audio-enhancer{padding:14px;margin-bottom:15px}.enhancer-heading{align-items:flex-start;flex-wrap:wrap}.enhancer-heading strong{font-size:15px}#audioEnhancerToggle{font-size:10px;padding:9px 11px}}
+
+/* Equalizador profissional recolhido por padrão para manter o player limpo */
+#audioEnhancerPanel[hidden]{display:none!important}
+.equalizer-entry{display:flex;justify-content:center;width:100%;margin:0 0 12px}
+#enhancerPanelToggle{width:min(100%,460px);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border:1px solid #393047;border-radius:14px;background:linear-gradient(120deg,#1d1930,#11151f);color:#f2edff;font:700 13px 'DM Sans',sans-serif;text-align:left;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+#enhancerPanelToggle span{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:#2d2541;color:#c9b6ff;font-size:18px}
+.audio-enhancer{max-height:min(72vh,720px);overflow-y:auto;overscroll-behavior:contain}
+.eq-presets-note{margin-top:9px;color:#9e98b1;font-size:10px;line-height:1.5}
+.eq-preamp{margin-top:16px;padding:11px 12px;border:1px solid #353044;border-radius:12px;background:#12111b}
+.eq-preamp label{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#e6e0f3;font-size:12px}
+.eq-preamp output,.eq-bands output{color:#bfaeff;font-size:10px;font-variant-numeric:tabular-nums}
+.eq-preamp input{display:block;width:100%;margin-top:10px;accent-color:#b49aff}
+.eq-bands{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px 5px;margin-top:14px;padding:12px 6px 10px;border:1px solid #353044;border-radius:14px;background:linear-gradient(180deg,#15131f,#0f1018)}
+.eq-bands label{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:7px;color:#e8e2f4;font-size:10px;font-weight:600}
+.eq-bands label span{white-space:nowrap}
+.eq-bands input{appearance:slider-vertical;-webkit-appearance:slider-vertical;writing-mode:vertical-lr;direction:rtl;width:28px;height:94px;margin:0;accent-color:#b49aff;cursor:pointer;touch-action:pan-x}
+.eq-bands output{min-height:12px;white-space:nowrap}
+.eq-actions{display:flex;gap:9px;margin-top:13px}
+.eq-actions button{flex:1;min-height:38px;padding:8px 10px;border:1px solid #48405b;border-radius:10px;background:#211d2d;color:#e9e2fa;font:600 11px 'DM Sans',sans-serif;cursor:pointer}
+.eq-actions button:active,#enhancerPanelToggle:active{transform:scale(.99)}
+@media(min-width:520px){.eq-bands{grid-template-columns:repeat(10,minmax(0,1fr));gap:5px 3px;padding-inline:8px}.eq-bands input{height:125px}}
+@media(max-width:360px){.eq-bands{gap:8px 2px;padding-inline:3px}.eq-bands input{height:82px;width:24px}.eq-bands label{font-size:9px}.eq-actions button{font-size:10px;padding:7px 5px}}
