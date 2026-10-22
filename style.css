@@ -735,3 +735,12 @@
   .quick-equalizer-button{right:9px;bottom:91px;min-height:43px;padding:0 11px}
   .quick-equalizer-label{font-size:11px}
 }
+
+
+/* Correções de robustez: mini player sempre mostra o nome e atalho do equalizador acima do player. */
+.player .now-playing .track-meta{min-width:0!important;}
+.player .now-playing #currentTitle{display:block!important;min-width:0!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;visibility:visible!important;opacity:1!important;color:#f4f1ff!important;}
+.quick-equalizer-button{z-index:1200!important;pointer-events:auto!important;touch-action:manipulation;}
+.player-overlay.open .expanded-player{overscroll-behavior:contain;}
+.player-overlay[data-view="equalizer"] .audio-enhancer{scroll-margin-top:12px;}
+@media(max-width:650px){.quick-equalizer-button{bottom:98px!important;z-index:1200!important;}}
