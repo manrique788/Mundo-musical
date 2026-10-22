@@ -246,6 +246,33 @@ let playbackRequestId = 0;
 let shuffleEnabled = false;
 const INITIAL_TRACK_LIMIT = 100;
 let visibleTrackLimit = INITIAL_TRACK_LIMIT;
+// Mantém apenas a próxima faixa aquecida em segundo plano. Assim a troca fica
+// rápida sem tentar baixar as 486 músicas do catálogo de uma vez.
+const nextAudio = document.createElement("audio");
+nextAudio.preload = "auto";
+nextAudio.muted = true;
+let preloadedIndex = -1;
+let preloadTimer = 0;
+function canPreloadNextTrack() {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  return !(connection && (connection.saveData || /^(slow-2g|2g)$/i.test(connection.effectiveType || "")));
+}
+function preloadTrack(index) {
+  const song = songs[index];
+  if (!song || !song.audioUrl || !canPreloadNextTrack()) return;
+  if (preloadedIndex === index && nextAudio.src === song.audioUrl) return;
+  nextAudio.pause();
+  nextAudio.src = song.audioUrl;
+  nextAudio.load();
+  preloadedIndex = index;
+}
+function preloadNextTrack(index) {
+  clearTimeout(preloadTimer);
+  if (!songs.length || !canPreloadNextTrack()) return;
+  const nextIndex = (index + 1) % songs.length;
+  // Dá prioridade total à faixa atual antes de aquecer a próxima.
+  preloadTimer = window.setTimeout(() => preloadTrack(nextIndex), 1200);
+}
 function updateShuffleButton() {
   const button = $("shuffleBtn");
   if (!button) return;
@@ -300,6 +327,7 @@ function playSong(index) {
   audio.pause();
   audio.preload = "auto";
   audio.src = song.audioUrl;
+  audio.load();
   const playback = audio.play();
 
   setScrollingTitle($("currentTitle"), song.title);
@@ -317,6 +345,7 @@ function playSong(index) {
       if ($("expandedPlayBtn")) $("expandedPlayBtn").textContent = "Ⅱ";
       syncExpandedPlayer();
       updatePlaybackRows();
+      preloadNextTrack(index);
     }).catch(() => {
       if (requestId !== playbackRequestId) return;
       $("playBtn").textContent = "▶";
