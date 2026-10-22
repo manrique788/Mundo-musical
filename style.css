@@ -694,7 +694,12 @@
 
 /* Equalizador profissional recolhido por padrão para manter o player limpo */
 #audioEnhancerPanel[hidden]{display:none!important}
-.equalizer-entry{display:flex;justify-content:center;width:100%;margin:0 0 12px}
+.player-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin:18px 0 12px}
+.player-tools button{min-height:40px;padding:9px 14px;border:1px solid #514366;border-radius:999px;background:#1b1727;color:#e9e1ff;font:700 12px 'DM Sans',sans-serif;cursor:pointer}
+#shuffleBtn.active{background:#34264f;border-color:#9b7bea;color:#fff}
+#enhancerPanelToggle{display:flex;align-items:center;justify-content:center;gap:8px}
+#enhancerPanelToggle span{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#2d2541;color:#c9b6ff;font-size:16px}
+@media(max-width:360px){.player-tools{gap:7px}.player-tools button{padding:8px 10px;font-size:11px}}
 #enhancerPanelToggle{width:min(100%,460px);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border:1px solid #393047;border-radius:14px;background:linear-gradient(120deg,#1d1930,#11151f);color:#f2edff;font:700 13px 'DM Sans',sans-serif;text-align:left;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.15)}
 #enhancerPanelToggle span{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:#2d2541;color:#c9b6ff;font-size:18px}
 .audio-enhancer{max-height:min(72vh,720px);overflow-y:auto;overscroll-behavior:contain}
@@ -715,32 +720,7 @@
 @media(max-width:360px){.eq-bands{gap:8px 2px;padding-inline:3px}.eq-bands input{height:82px;width:24px}.eq-bands label{font-size:9px}.eq-actions button{font-size:10px;padding:7px 5px}}
 
 
-/* Atalho flutuante: abre o equalizador sem precisar procurar no player. */
-.quick-equalizer-button{
-  position:fixed;z-index:45;right:14px;bottom:104px;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  min-height:48px;padding:0 15px;border:1px solid rgba(196,173,255,.55);
-  border-radius:999px;background:linear-gradient(135deg,#8b5cf6,#5b35b5);
-  color:#fff;font:700 12px 'DM Sans',sans-serif;
-  box-shadow:0 8px 24px rgba(91,53,181,.42);cursor:pointer;
-  transition:transform .18s ease,box-shadow .18s ease;
-}
-.quick-equalizer-button span:first-child{font-size:20px;line-height:1}
-.quick-equalizer-button:active{transform:scale(.96)}
-.quick-equalizer-button:focus-visible{outline:3px solid #d6c6ff;outline-offset:3px}
-@media(max-width:650px){
-  .quick-equalizer-button{right:12px;bottom:94px;min-height:46px;padding:0 13px}
-}
-@media(max-width:360px){
-  .quick-equalizer-button{right:9px;bottom:91px;min-height:43px;padding:0 11px}
-  .quick-equalizer-label{font-size:11px}
-}
-
-
-/* Correções de robustez: mini player sempre mostra o nome e atalho do equalizador acima do player. */
+/* Correções de robustez: mini player sempre mostra o nome da música. */
 .player .now-playing .track-meta{min-width:0!important;}
 .player .now-playing #currentTitle{display:block!important;min-width:0!important;width:100%!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;visibility:visible!important;opacity:1!important;color:#f4f1ff!important;}
-.quick-equalizer-button{z-index:1200!important;pointer-events:auto!important;touch-action:manipulation;}
 .player-overlay.open .expanded-player{overscroll-behavior:contain;}
-.player-overlay[data-view="equalizer"] .audio-enhancer{scroll-margin-top:12px;}
-@media(max-width:650px){.quick-equalizer-button{bottom:98px!important;z-index:1200!important;}}
