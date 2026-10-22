@@ -1,8 +1,8 @@
-const CACHE_NAME = 'mundo-musical-app-v7';
+const CACHE_NAME = 'mundo-musical-app-v8';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=25',
+  './style.css?v=26',
   './app.js?v=32',
   './manifest.webmanifest',
   './icons/icon-192.png',
