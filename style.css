@@ -713,3 +713,25 @@
 .eq-actions button:active,#enhancerPanelToggle:active{transform:scale(.99)}
 @media(min-width:520px){.eq-bands{grid-template-columns:repeat(10,minmax(0,1fr));gap:5px 3px;padding-inline:8px}.eq-bands input{height:125px}}
 @media(max-width:360px){.eq-bands{gap:8px 2px;padding-inline:3px}.eq-bands input{height:82px;width:24px}.eq-bands label{font-size:9px}.eq-actions button{font-size:10px;padding:7px 5px}}
+
+
+/* Atalho flutuante: abre o equalizador sem precisar procurar no player. */
+.quick-equalizer-button{
+  position:fixed;z-index:45;right:14px;bottom:104px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:0 15px;border:1px solid rgba(196,173,255,.55);
+  border-radius:999px;background:linear-gradient(135deg,#8b5cf6,#5b35b5);
+  color:#fff;font:700 12px 'DM Sans',sans-serif;
+  box-shadow:0 8px 24px rgba(91,53,181,.42);cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.quick-equalizer-button span:first-child{font-size:20px;line-height:1}
+.quick-equalizer-button:active{transform:scale(.96)}
+.quick-equalizer-button:focus-visible{outline:3px solid #d6c6ff;outline-offset:3px}
+@media(max-width:650px){
+  .quick-equalizer-button{right:12px;bottom:94px;min-height:46px;padding:0 13px}
+}
+@media(max-width:360px){
+  .quick-equalizer-button{right:9px;bottom:91px;min-height:43px;padding:0 11px}
+  .quick-equalizer-label{font-size:11px}
+}
