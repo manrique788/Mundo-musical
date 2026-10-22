@@ -56,29 +56,14 @@ async function enableAudioEnhancer(){
  if(button){button.disabled=true;button.textContent="Ativando…";}
  enhancerStatus("Preparando equalizador…");
  try{
-  // Inicia o AudioContext enquanto o toque do usuário ainda está ativo.
-  // Esperar por uma requisição de rede antes do resume() pode deixar o contexto
-  // suspenso no Android e fazer o áudio parecer parar.
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-  if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
-  if(!enhancerContext)enhancerContext=new AudioContextClass();
-  const resumePromise=enhancerContext.state==="suspended"?enhancerContext.resume():Promise.resolve();
-
-  // Verifica CORS sem tocar na origem da música nem conectá-la ao Web Audio.
-  // Se a verificação falhar, o áudio original permanece intacto.
-  // Testa o mesmo tipo de pedido usado para baixar áudio, com Range de 1 byte.
-  // HEAD pode ser bloqueado por algumas configurações mesmo quando GET funciona.
-  const corsPromise=fetch(audio.currentSrc,{method:"GET",headers:{Range:"bytes=0-0"},mode:"cors",cache:"no-store"});
-  const results=await Promise.allSettled([resumePromise,corsPromise]);
-  if(results[0].status==="rejected")throw new Error("o navegador não conseguiu iniciar o áudio do equalizador");
-  const corsResponse=results[1].status==="fulfilled"?results[1].value:null;
-  if(corsResponse&&corsResponse.body)corsResponse.body.cancel().catch(()=>{});
-  if(!corsResponse||!corsResponse.ok){
-   enhancerStatus("Equalizador não ativado: o navegador não confirmou acesso CORS ao áudio. A música original foi mantida.",true);
-   return;
-  }
-  if(!enhancerSource){
+  if(!enhancerContext){
+   const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+   if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
+   enhancerContext=new AudioContextClass();
    enhancerSource=enhancerContext.createMediaElementSource(audio);
+
+   // Liga primeiro o caminho original: se a criação de algum filtro falhar,
+   // o áudio continua audível sem efeitos.
    enhancerDryGain=enhancerContext.createGain();
    enhancerWetGain=enhancerContext.createGain();
    enhancerDryGain.gain.value=1;
@@ -116,6 +101,7 @@ async function enableAudioEnhancer(){
  }catch(error){
   console.warn("Equalizador não ativado:",error);
   const detail=(error&&error.message)?String(error.message):"erro desconhecido";
+  // Mantém o caminho seco ativo e não troca/recarrega a faixa que está tocando.
   if(enhancerDryGain&&enhancerContext){
    try{enhancerDryGain.gain.setValueAtTime(1,enhancerContext.currentTime);}catch(_){}
    if(enhancerWetGain)try{enhancerWetGain.gain.setValueAtTime(0,enhancerContext.currentTime);}catch(_){}
@@ -127,6 +113,7 @@ async function enableAudioEnhancer(){
   if(button&&!enhancerEnabled){button.textContent="Ativar melhoria";button.setAttribute("aria-pressed","false");}
  }
 }
+
 let songs = [];
 let visibleSongs = [];
 let currentIndex = -1;
@@ -453,9 +440,8 @@ function playSong(index) {
   // solicitações quando o usuário toca várias vezes em "próxima".
   audio.pause();
   audio.preload = "auto";
-  // CORS deve ser definido antes de carregar a faixa para permitir Web Audio sem reabri-la depois.
-  // Mantém a configuração original usada pelo player; o R2 precisa autorizar CORS para o equalizador.
-  audio.crossOrigin = "anonymous";
+  // Não forçar CORS no áudio: a reprodução normal de arquivos públicos do R2
+  // não deve depender da configuração CORS usada pelo equalizador.
   audio.src = song.audioUrl;
   audio.load();
   const playback = audio.play();
