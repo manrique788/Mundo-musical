@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=28">
+  <link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
   <div class="app-shell">
@@ -37,47 +37,38 @@
 
     <main class="main-content">
       <header class="topbar">
-        <div class="mobile-brand"><span class="brand-mark">♫</span> Mundo<span class="brand-accent">Musical</span></div>
+        <a class="mobile-brand" href="#" aria-label="Mundo Musical início"><span class="brand-mark">♫</span><span>Mundo<span class="brand-accent">Musical</span></span></a>
         <div class="search-wrap"><span class="search-icon">⌕</span><input id="searchInput" type="search" placeholder="Buscar música, artista ou gênero..." aria-label="Buscar música"></div>
         <button class="install-button" id="installButton" type="button">＋ Instalar app</button>
         <button class="profile-dot" aria-label="Perfil">♪</button>
       </header>
 
-      <section class="hero">
-        <div class="hero-copy">
-          <div class="eyebrow"><span class="live-dot"></span> SEU SOM, SEU UNIVERSO</div>
-          <h1>Encontre a música<br><span>que combina com você.</span></h1>
-          <p>Explore sons, descubra artistas e dê play no seu próximo favorito.</p>
-          <button class="primary-btn" id="exploreBtn">♫ &nbsp; Explorar músicas</button>
-        </div>
-        <div class="hero-art" aria-hidden="true">
-          <div class="disc disc-one"></div><div class="disc disc-two"></div>
-          <div class="equalizer"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <div class="hero-note">♪</div>
-        </div>
-      </section>
 
-      <section class="section-head">
-        <div><div class="section-kicker">ESCOLHA O CLIMA</div><h2>Explore por gênero</h2></div>
+      <section class="welcome-strip">
+        <div><div class="eyebrow"><span class="live-dot"></span> SEU SOM, DO SEU JEITO</div>
+          <h1>O que vamos <span>ouvir hoje?</span></h1><p>Suas músicas e pastas, tudo em um só lugar.</p>
+        </div><button class="welcome-play" id="exploreBtn" type="button" aria-label="Explorar músicas">▶</button>
       </section>
-      <div class="genre-chips" id="genreChips">
-        <button class="chip selected" data-genre="Todos">Todos</button>
-      </div>
-      <section class="genre-cards-section">
-        <div class="genre-cards" id="genreCards" aria-label="Gêneros musicais"></div>
+      <section class="dashboard-section folders-section" id="foldersSection">
+        <div class="dashboard-heading"><div><span class="section-kicker">SUA COLEÇÃO</span><h2>Suas pastas</h2></div><span class="track-count" id="folderHint">Toque para reproduzir</span></div>
+        <div class="genre-cards" id="genreCards" aria-label="Suas pastas musicais"></div>
       </section>
-
-      <section class="section-head songs-heading">
-        <div><div class="section-kicker">FEITO PARA VOCÊ</div><h2 id="listTitle">Todas as músicas</h2></div>
-        <span class="track-count" id="trackCount">Carregando catálogo...</span>
+      <section class="dashboard-section tracks-section" id="tracksSection">
+        <div class="dashboard-heading"><div><span class="section-kicker">ESCOLHA SEU SOM</span><h2 id="listTitle">Todas as músicas</h2></div><span class="track-count" id="trackCount">Carregando catálogo...</span></div>
+        <div class="genre-chips" id="genreChips"><button class="chip selected" data-genre="Todos">Todas</button></div>
+        <div id="songList" class="song-list"><div class="loading-card">Preparando sua biblioteca musical...</div></div>
       </section>
-      <div id="songList" class="song-list">
-        <div class="loading-card">Preparando sua biblioteca musical...</div>
-      </div>
       <div class="site-footer">Mundo Musical <span>•</span> Ouça com responsabilidade e respeite os direitos dos artistas.</div>
     </main>
   </div>
 
+
+  <nav class="mobile-bottom-nav" aria-label="Navegação principal">
+    <button type="button" id="mobileHomeBtn" class="mobile-nav-item active"><span>⌂</span><small>Início</small></button>
+    <button type="button" id="mobileFoldersBtn" class="mobile-nav-item"><span>▤</span><small>Pastas</small></button>
+    <button type="button" id="mobileSearchBtn" class="mobile-nav-item"><span>⌕</span><small>Buscar</small></button>
+    <button type="button" id="mobilePlayerBtn" class="mobile-nav-item"><span>♫</span><small>Player</small></button>
+  </nav>
   <footer class="player">
     <button class="now-playing" id="openPlayerBtn" type="button" aria-label="Abrir reprodutor completo">
       <div class="cover-small" id="currentCover">♫</div>
@@ -130,6 +121,19 @@
     </section>
   </div>
   <script src="app.js?v=43"></script>
+
+  <script>
+    (() => {
+      const el = id => document.getElementById(id);
+      const go = id => { const node=el(id); if(node) node.scrollIntoView({behavior:'smooth',block:'start'}); };
+      const mark = id => { document.querySelectorAll('.mobile-nav-item').forEach(b=>b.classList.remove('active')); el(id)?.classList.add('active'); };
+      el('mobileHomeBtn')?.addEventListener('click',()=>{ el('homeBtn')?.click(); window.scrollTo({top:0,behavior:'smooth'}); mark('mobileHomeBtn'); });
+      el('mobileFoldersBtn')?.addEventListener('click',()=>{ go('foldersSection'); mark('mobileFoldersBtn'); });
+      el('mobileSearchBtn')?.addEventListener('click',()=>{ go('searchInput'); setTimeout(()=>el('searchInput')?.focus(),250); mark('mobileSearchBtn'); });
+      el('mobilePlayerBtn')?.addEventListener('click',()=>{ el('openPlayerBtn')?.click(); mark('mobilePlayerBtn'); });
+      el('exploreBtn')?.addEventListener('click',()=>go('tracksSection'));
+    })();
+  </script>
   <script>
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
   </script>
