@@ -1063,3 +1063,21 @@ body:has(#tracksSection.folder-detail-view) .hero-section,
 #tracksSection.folder-detail-view > .dashboard-heading{display:none!important;}
 #tracksSection.folder-detail-view{margin-top:10px!important;padding-top:0!important;}
 #tracksSection.folder-detail-view .folder-open-title{display:none!important;}
+
+/* Modo pasta: mostrar exclusivamente as faixas da pasta aberta. */
+body:has(#tracksSection.folder-detail-view) .main-content > .topbar,
+body:has(#tracksSection.folder-detail-view) .main-content > .welcome-strip,
+body:has(#tracksSection.folder-detail-view) #tracksSection > .dashboard-heading,
+body:has(#tracksSection.folder-detail-view) #tracksSection > .genre-chips,
+body:has(#tracksSection.folder-detail-view) #tracksSection .folder-open-header,
+body:has(#tracksSection.folder-detail-view) .site-footer {
+  display: none !important;
+}
+body:has(#tracksSection.folder-detail-view) #tracksSection {
+  margin-top: 0 !important;
+  padding-top: 8px !important;
+}
+body:has(#tracksSection.folder-detail-view) #songList {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
