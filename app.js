@@ -247,7 +247,7 @@ function renderSongs() {
   // quando uma pasta é aberta ou quando o usuário faz uma busca explícita.
   const tracksSection = $("tracksSection");
   const isFolderClosed = selectedGenre === "Todos" && !query;
-  if (tracksSection) tracksSection.style.display = isFolderClosed ? "none" : "";
+  if (tracksSection) tracksSection.classList.toggle("folder-view-hidden", isFolderClosed);
 
   visibleSongs = songs.filter(s => {
     const matchesGenre = selectedGenre === "Todos" || (s.genre || "Outros") === selectedGenre;
@@ -256,6 +256,7 @@ function renderSongs() {
   });
   if (isFolderClosed) {
     visibleSongs = [];
+    $("songList").innerHTML = "";
     return;
   }
   $("listTitle").textContent = selectedGenre === "Todos" ? (query ? "Resultados da busca" : "Explore todas as músicas") : selectedGenre;
