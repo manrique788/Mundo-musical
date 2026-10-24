@@ -1050,5 +1050,6 @@ input[type=range]{accent-color:var(--accent)}
 }
 
 
-/* Na tela inicial, ocultar a seção inteira de faixas; mostrar apenas após abrir uma pasta ou buscar. */
-#tracksSection.folder-view-hidden{display:none!important;}
+/* A lista de músicas fica fechada por padrão; só aparece ao abrir uma pasta ou fazer uma busca. */
+#tracksSection{display:none!important;}
+#tracksSection.folder-view-open{display:block!important;}
