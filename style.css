@@ -1081,3 +1081,6 @@ body:has(#tracksSection.folder-detail-view) #songList {
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
+
+/* Dentro de uma pasta, ocultar a aba Buscar da navegação inferior. */
+body:has(#tracksSection.folder-detail-view) #mobileSearchBtn{display:none!important;}
