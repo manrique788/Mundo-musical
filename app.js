@@ -246,8 +246,14 @@ function renderSongs() {
   // Na tela inicial, mostrar somente as pastas. A lista de faixas só aparece
   // quando uma pasta é aberta ou quando o usuário faz uma busca explícita.
   const tracksSection = $("tracksSection");
+  const foldersSection = $("foldersSection");
   const isFolderClosed = selectedGenre === "Todos" && !query;
-  if (tracksSection) tracksSection.classList.toggle("folder-view-open", !isFolderClosed);
+  const isInsideFolder = selectedGenre !== "Todos" && !query;
+  if (tracksSection) {
+    tracksSection.classList.toggle("folder-view-open", !isFolderClosed);
+    tracksSection.classList.toggle("folder-detail-view", isInsideFolder);
+  }
+  if (foldersSection) foldersSection.classList.toggle("folder-view-hidden", isInsideFolder);
 
   visibleSongs = songs.filter(s => {
     const matchesGenre = selectedGenre === "Todos" || (s.genre || "Outros") === selectedGenre;
