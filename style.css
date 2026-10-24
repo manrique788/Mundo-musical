@@ -1048,3 +1048,7 @@ input[type=range]{accent-color:var(--accent)}
   color: var(--muted, #a7a7a7);
   font-size: 14px;
 }
+
+
+/* Na tela inicial, ocultar a seção inteira de faixas; mostrar apenas após abrir uma pasta ou buscar. */
+#tracksSection.folder-view-hidden{display:none!important;}
