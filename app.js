@@ -50,67 +50,15 @@ function setFlatEqualizer(){
  applyEnhancerPreset();
 }
 async function enableAudioEnhancer(){
- if(enhancerEnabled){setEnhancerEnabled(false);return;}
- if(!songs.length||currentIndex<0||!audio.currentSrc){enhancerStatus("Reproduza uma música antes de ativar.",true);return;}
+ // Não conecte o áudio do Cloudflare R2 ao Web Audio sem CORS válido:
+ // isso pode silenciar arquivos externos mesmo com os efeitos desligados.
+ setEnhancerEnabled(false);
+ enhancerStatus("Equalizador temporariamente desativado para proteger a reprodução. O som original continua disponível.", true);
  const button=$("audioEnhancerToggle");
- if(button){button.disabled=true;button.textContent="Ativando…";}
- enhancerStatus("Preparando equalizador…");
- try{
-  if(!enhancerContext){
-   const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-   if(!AudioContextClass)throw new Error("este navegador não oferece Web Audio API");
-   enhancerContext=new AudioContextClass();
-   enhancerSource=enhancerContext.createMediaElementSource(audio);
-
-   // Liga primeiro o caminho original: se a criação de algum filtro falhar,
-   // o áudio continua audível sem efeitos.
-   enhancerDryGain=enhancerContext.createGain();
-   enhancerWetGain=enhancerContext.createGain();
-   enhancerDryGain.gain.value=1;
-   enhancerWetGain.gain.value=0;
-   enhancerSource.connect(enhancerDryGain);
-   enhancerDryGain.connect(enhancerContext.destination);
-
-   enhancerPreamp=enhancerContext.createGain();
-   enhancerPreamp.gain.value=1;
-   enhancerFilters=EQ_BANDS.map(band=>{
-    const filter=enhancerContext.createBiquadFilter();
-    filter.type=band.type;
-    filter.frequency.value=band.freq;
-    if(band.type==="peaking")filter.Q.value=1.05;
-    filter.gain.value=0;
-    return filter;
-   });
-   enhancerCompressor=enhancerContext.createDynamicsCompressor();
-   enhancerCompressor.threshold.value=-10;
-   enhancerCompressor.knee.value=8;
-   enhancerCompressor.ratio.value=2.5;
-   enhancerCompressor.attack.value=.004;
-   enhancerCompressor.release.value=.2;
-   let previous=enhancerPreamp;
-   enhancerSource.connect(enhancerPreamp);
-   for(const filter of enhancerFilters){previous.connect(filter);previous=filter;}
-   previous.connect(enhancerCompressor);
-   enhancerCompressor.connect(enhancerWetGain);
-   enhancerWetGain.connect(enhancerContext.destination);
-  }
-  if(enhancerContext.state==="suspended")await enhancerContext.resume();
-  enhancerCrossOriginReady=true;
-  applyEnhancerSettings();
-  setEnhancerEnabled(true);
- }catch(error){
-  console.warn("Equalizador não ativado:",error);
-  const detail=(error&&error.message)?String(error.message):"erro desconhecido";
-  // Mantém o caminho seco ativo e não troca/recarrega a faixa que está tocando.
-  if(enhancerDryGain&&enhancerContext){
-   try{enhancerDryGain.gain.setValueAtTime(1,enhancerContext.currentTime);}catch(_){}
-   if(enhancerWetGain)try{enhancerWetGain.gain.setValueAtTime(0,enhancerContext.currentTime);}catch(_){}
-  }
-  enhancerEnabled=false;
-  enhancerStatus("Equalizador indisponível: "+detail+" • música mantida sem efeitos.",true);
- }finally{
-  if(button)button.disabled=false;
-  if(button&&!enhancerEnabled){button.textContent="Ativar melhoria";button.setAttribute("aria-pressed","false");}
+ if(button){
+   button.disabled=true;
+   button.textContent="Equalizador desativado";
+   button.setAttribute("aria-pressed","false");
  }
 }
 
@@ -464,7 +412,22 @@ function playSong(index) {
   audio.preload = "auto";
   // Não forçar CORS no áudio: a reprodução normal de arquivos públicos do R2
   // não deve depender da configuração CORS usada pelo equalizador.
-  audio.src = song.audioUrl;
+  // Não ativa CORS no elemento de áudio: a reprodução nativa do R2
+  // deve funcionar sem depender de cabeçalhos CORS para o equalizador.
+  let safeAudioUrl = song.audioUrl;
+  try {
+    const parsedAudioUrl = new URL(song.audioUrl, window.location.href);
+    parsedAudioUrl.pathname = parsedAudioUrl.pathname
+      .split("/")
+      .map(part => {
+        if (!part) return "";
+        try { return encodeURIComponent(decodeURIComponent(part)); }
+        catch (_) { return encodeURIComponent(part); }
+      })
+      .join("/");
+    safeAudioUrl = parsedAudioUrl.href;
+  } catch (_) {}
+  audio.src = safeAudioUrl;
   audio.load();
   const playback = audio.play();
 
@@ -660,6 +623,19 @@ progressBar.addEventListener("keyup", hideProgressThumbSoon);
 $("progress").addEventListener("input", e => {
   e.currentTarget.style.setProperty("--progress-percent", e.currentTarget.value + "%");
   if (audio.duration) audio.currentTime = (Number(e.target.value) / 100) * audio.duration;
+});
+audio.addEventListener("error", () => {
+  const song = currentIndex >= 0 ? songs[currentIndex] : null;
+  if (!song) return;
+  const code = audio.error ? audio.error.code : 0;
+  const reasons = {
+    1: "reprodução interrompida",
+    2: "falha de rede ao carregar o arquivo",
+    3: "arquivo inválido ou formato não suportado",
+    4: "arquivo não encontrado ou URL incorreta"
+  };
+  console.error("Falha no áudio:", {title:song.title, url:audio.currentSrc || song.audioUrl, code, reason:reasons[code] || "erro desconhecido"});
+  if ($("currentArtist")) $("currentArtist").textContent = reasons[code] || "Não foi possível carregar esta música";
 });
 audio.addEventListener("ended", () => stepSong(1));
 function syncPlaybackIcons() {
