@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 </head>
 <body>
   <div class="app-shell">
@@ -93,34 +93,11 @@
       <h2 id="expandedTitle">Escolha uma música</h2>
       <p id="expandedArtist">Sua próxima favorita começa aqui</p>
       <div class="expanded-progress"><span id="expandedCurrentTime">0:00</span><input id="expandedProgress" type="range" min="0" max="100" value="0" aria-label="Progresso da música"><span id="expandedDuration">0:00</span></div>
-      <div class="player-tools"><button id="shuffleBtn" type="button" aria-pressed="false">🔀 Aleatório: desligado</button><button id="enhancerPanelToggle" type="button" aria-expanded="false" aria-controls="audioEnhancerPanel">🎚 Equalizador <span id="enhancerPanelArrow">＋</span></button></div>
-<section class="audio-enhancer" id="audioEnhancerPanel" aria-label="Equalizador profissional" hidden>
-<div class="enhancer-heading"><div><strong>✨ Equalizador de áudio</strong><span id="audioEnhancerStatus" role="status">Desligado • som original</span></div><button id="audioEnhancerToggle" type="button" aria-pressed="false">Ativar melhoria</button></div>
-<label class="enhancer-mode-label" for="audioEnhancerMode">Preset de equalização</label>
-<select id="audioEnhancerMode">
-<option value="smart" selected>Inteligente</option><option value="flat">Flat (neutro)</option><option value="pop">Pop</option><option value="rock">Rock</option><option value="hiphop">Hip-hop / Funk</option><option value="electronic">Eletrônica / Mega Funk</option><option value="voice">Voz clara</option><option value="bass">Graves reforçados</option><option value="classical">Clássico</option>
-</select>
-<div class="eq-presets-note">10 bandas independentes · ajuste fino de −12 dB a +12 dB</div>
-<div class="eq-preamp"><label for="enhancerPreamp">Pré-amplificação <output id="enhancerPreampValue">−1 dB</output></label><input id="enhancerPreamp" type="range" min="-12" max="12" step="1" value="-1"></div>
-<div class="eq-bands" id="enhancerBands">
-<label><span>32 Hz</span><input id="eq32" data-eq-band="0" type="range" min="-12" max="12" step="1" value="1"><output id="eq32Value">+1 dB</output></label>
-<label><span>64 Hz</span><input id="eq64" data-eq-band="1" type="range" min="-12" max="12" step="1" value="2"><output id="eq64Value">+2 dB</output></label>
-<label><span>125 Hz</span><input id="eq125" data-eq-band="2" type="range" min="-12" max="12" step="1" value="2"><output id="eq125Value">+2 dB</output></label>
-<label><span>250 Hz</span><input id="eq250" data-eq-band="3" type="range" min="-12" max="12" step="1" value="0"><output id="eq250Value">0 dB</output></label>
-<label><span>500 Hz</span><input id="eq500" data-eq-band="4" type="range" min="-12" max="12" step="1" value="-1"><output id="eq500Value">−1 dB</output></label>
-<label><span>1 kHz</span><input id="eq1000" data-eq-band="5" type="range" min="-12" max="12" step="1" value="0"><output id="eq1000Value">0 dB</output></label>
-<label><span>2 kHz</span><input id="eq2000" data-eq-band="6" type="range" min="-12" max="12" step="1" value="1"><output id="eq2000Value">+1 dB</output></label>
-<label><span>4 kHz</span><input id="eq4000" data-eq-band="7" type="range" min="-12" max="12" step="1" value="2"><output id="eq4000Value">+2 dB</output></label>
-<label><span>8 kHz</span><input id="eq8000" data-eq-band="8" type="range" min="-12" max="12" step="1" value="2"><output id="eq8000Value">+2 dB</output></label>
-<label><span>16 kHz</span><input id="eq16000" data-eq-band="9" type="range" min="-12" max="12" step="1" value="1"><output id="eq16000Value">+1 dB</output></label>
-</div>
-<div class="eq-actions"><button id="eqResetBtn" type="button">Restaurar preset</button><button id="eqFlatBtn" type="button">Zerar equalizador</button></div>
-<p class="enhancer-note">O equalizador só processa o som quando a melhoria está ativa. Se a verificação de acesso falhar, o áudio original continua disponível.</p></section>
       <div class="expanded-controls"><button id="prevFolderBtn" aria-label="Pasta anterior" title="Pasta anterior">📁‹</button><button id="expandedPrevBtn" aria-label="Música anterior" title="Música anterior">⏮</button><button id="expandedPlayBtn" aria-label="Reproduzir ou pausar">▶</button><button id="expandedNextBtn" aria-label="Próxima música" title="Próxima música">⏭</button><button id="nextFolderBtn" aria-label="Próxima pasta" title="Próxima pasta">📁›</button></div>
       <div class="expanded-volume"><span>🔊 Volume</span><input id="expandedVolume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"></div>
     </section>
   </div>
-  <script src="app.js?v=50"></script>
+  <script src="app.js?v=51"></script>
 
   <script>
     (() => {
