@@ -196,6 +196,17 @@ function renderGenres() {
   $("sideGenres").innerHTML = genres().slice(0,12).map(g => `<button class="side-genre" data-genre="${escapeHtml(g)}">♫ &nbsp; ${escapeHtml(g)}</button>`).join("");
 }
 
+function openFolder(folderName) {
+  if (!folderName) return;
+  selectedGenre = folderName;
+  $("searchInput").value = "";
+  renderGenres();
+  renderGenreCards();
+  renderSongs();
+  const section = $("tracksSection");
+  if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function renderGenreCards() {
   const palettes = [
     "linear-gradient(135deg,#5632a8,#1a1735)", "linear-gradient(135deg,#a13c72,#30162f)",
@@ -224,21 +235,7 @@ function renderGenreCards() {
     card.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
-      const folderName = card.dataset.folderPlay || card.dataset.genre;
-      if (!folderName) return;
-      selectedGenre = folderName;
-      $("searchInput").value = "";
-      renderGenres(); renderSongs();
-      const currentFolder = currentIndex >= 0 && songs[currentIndex] ? (songs[currentIndex].genre || "Sem pasta") : "";
-      if (currentFolder === folderName) {
-        if (audio.paused) audio.play().catch(() => {});
-        else audio.pause();
-        renderGenreCards();
-        return;
-      }
-      const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
-      if (firstIndex >= 0) playSong(firstIndex);
-      else console.error("Nenhuma música encontrada para a pasta:", folderName);
+      openFolder(card.dataset.folderPlay || card.dataset.genre);
     });
   });
 }
@@ -279,6 +276,13 @@ function renderSongs() {
 
   if (selectedGenre !== "Todos" || query) {
     renderVisibleTrackPage(renderRow);
+    if (selectedGenre !== "Todos") {
+      $("songList").insertAdjacentHTML("afterbegin", `
+        <div class="folder-open-header">
+          <button type="button" class="see-genre folder-back-button" data-back-folders>← Voltar para as pastas</button>
+          <div class="folder-open-title"><span class="shelf-kicker">PASTA DE MÚSICAS</span><h3>${escapeHtml(selectedGenre)}</h3><p>${visibleSongs.length} ${visibleSongs.length === 1 ? "música" : "músicas"} nesta pasta</p></div>
+        </div>`);
+    }
     return;
   }
 
@@ -546,10 +550,23 @@ document.addEventListener("click", event => {
     renderVisibleTrackPage(renderRow);
     return;
   }
+  const backFoldersButton = event.target.closest("[data-back-folders]");
+  if (backFoldersButton) {
+    selectedGenre = "Todos";
+    $("searchInput").value = "";
+    renderGenres(); renderGenreCards(); renderSongs();
+    const section = $("foldersSection");
+    if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
   const genreButton = event.target.closest("[data-genre]");
   if (genreButton) {
-    selectedGenre = genreButton.dataset.genre;
-    renderGenres(); renderGenreCards(); renderSongs();
+    if (genreButton.classList.contains("genre-card")) {
+      openFolder(genreButton.dataset.genre);
+    } else {
+      selectedGenre = genreButton.dataset.genre;
+      renderGenres(); renderGenreCards(); renderSongs();
+    }
     return;
   }
   const playButton = event.target.closest("[data-play]");
