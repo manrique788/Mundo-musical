@@ -1050,6 +1050,8 @@ input[type=range]{accent-color:var(--accent)}
 }
 
 
-/* A lista de músicas fica fechada por padrão; só aparece ao abrir uma pasta ou fazer uma busca. */
+/* A tela inicial mostra apenas as pastas; ao abrir uma pasta, mostra somente as músicas dela. */
 #tracksSection{display:none!important;}
 #tracksSection.folder-view-open{display:block!important;}
+#foldersSection.folder-view-hidden{display:none!important;}
+#tracksSection.folder-detail-view .genre-chips{display:none!important;}
