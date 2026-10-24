@@ -1055,3 +1055,10 @@ input[type=range]{accent-color:var(--accent)}
 #tracksSection.folder-view-open{display:block!important;}
 #foldersSection.folder-view-hidden{display:none!important;}
 #tracksSection.folder-detail-view .genre-chips{display:none!important;}
+
+/* Pasta aberta: foco na lista de faixas, sem banner inicial nem cabeçalhos duplicados. */
+body:has(#tracksSection.folder-detail-view) .hero,
+body:has(#tracksSection.folder-detail-view) .hero-section,
+#tracksSection.folder-detail-view > .dashboard-heading{display:none!important;}
+#tracksSection.folder-detail-view{margin-top:10px!important;padding-top:0!important;}
+#tracksSection.folder-detail-view .folder-open-title{display:none!important;}
