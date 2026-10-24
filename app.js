@@ -247,7 +247,7 @@ function renderSongs() {
   // quando uma pasta é aberta ou quando o usuário faz uma busca explícita.
   const tracksSection = $("tracksSection");
   const isFolderClosed = selectedGenre === "Todos" && !query;
-  if (tracksSection) tracksSection.classList.toggle("folder-view-hidden", isFolderClosed);
+  if (tracksSection) tracksSection.classList.toggle("folder-view-open", !isFolderClosed);
 
   visibleSongs = songs.filter(s => {
     const matchesGenre = selectedGenre === "Todos" || (s.genre || "Outros") === selectedGenre;
