@@ -1014,3 +1014,37 @@ input[type=range]{accent-color:var(--accent)}
  .folders-section .genre-card{min-height:118px}.player{padding-left:7px;padding-right:7px}
  .player-controls{gap:5px}.player-controls .play-main{width:32px;height:32px}
 }
+
+
+/* Navegação dentro das pastas de gênero */
+.folder-open-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  margin: 0 0 22px;
+  padding: 4px 0 18px;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+}
+.folder-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+  color: #f7f7f7;
+  cursor: pointer;
+}
+.folder-open-title h3 {
+  margin: 5px 0 4px;
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.15;
+}
+.folder-open-title p {
+  margin: 0;
+  color: var(--muted, #a7a7a7);
+  font-size: 14px;
+}
