@@ -242,11 +242,22 @@ function renderGenreCards() {
 function renderSongs() {
   visibleTrackLimit = INITIAL_TRACK_LIMIT;
   const query = $("searchInput").value.trim().toLocaleLowerCase("pt-BR");
+
+  // Na tela inicial, mostrar somente as pastas. A lista de faixas só aparece
+  // quando uma pasta é aberta ou quando o usuário faz uma busca explícita.
+  const tracksSection = $("tracksSection");
+  const isFolderClosed = selectedGenre === "Todos" && !query;
+  if (tracksSection) tracksSection.style.display = isFolderClosed ? "none" : "";
+
   visibleSongs = songs.filter(s => {
     const matchesGenre = selectedGenre === "Todos" || (s.genre || "Outros") === selectedGenre;
     const searchable = [s.title,s.artist,s.genre].join(" ").toLocaleLowerCase("pt-BR");
     return matchesGenre && searchable.includes(query);
   });
+  if (isFolderClosed) {
+    visibleSongs = [];
+    return;
+  }
   $("listTitle").textContent = selectedGenre === "Todos" ? (query ? "Resultados da busca" : "Explore todas as músicas") : selectedGenre;
   $("trackCount").textContent = `${visibleSongs.length} ${visibleSongs.length === 1 ? "música" : "músicas"}`;
   if (!visibleSongs.length) {
