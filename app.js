@@ -1,67 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
 
-/* Equalizador profissional de 10 bandas com caminho seco de segurança. */
-let enhancerContext=null, enhancerSource=null, enhancerFilters=[], enhancerCompressor=null, enhancerPreamp=null, enhancerDryGain=null, enhancerWetGain=null;
-let enhancerEnabled=false, enhancerCrossOriginReady=false;
-const EQ_BANDS=[
- {id:"eq32",freq:32,type:"lowshelf"},{id:"eq64",freq:64,type:"peaking"},{id:"eq125",freq:125,type:"peaking"},
- {id:"eq250",freq:250,type:"peaking"},{id:"eq500",freq:500,type:"peaking"},{id:"eq1000",freq:1000,type:"peaking"},
- {id:"eq2000",freq:2000,type:"peaking"},{id:"eq4000",freq:4000,type:"peaking"},{id:"eq8000",freq:8000,type:"peaking"},{id:"eq16000",freq:16000,type:"highshelf"}
-];
-const EQ_PRESETS={
- smart:{name:"Inteligente",preamp:-1,gains:[1,2,2,0,-1,0,1,2,2,1]},
- flat:{name:"Flat (neutro)",preamp:0,gains:[0,0,0,0,0,0,0,0,0,0]},
- pop:{name:"Pop",preamp:-2,gains:[2,2,1,0,-1,0,2,2,1,2]},
- rock:{name:"Rock",preamp:-2,gains:[3,2,-1,-2,0,1,2,3,2,2]},
- hiphop:{name:"Hip-hop / Funk",preamp:-3,gains:[4,4,3,1,-1,0,1,2,1,1]},
- electronic:{name:"Eletrônica / Mega Funk",preamp:-3,gains:[4,3,1,0,-1,0,2,2,3,3]},
- voice:{name:"Voz clara",preamp:-1,gains:[-2,-1,0,1,2,3,3,2,1,0]},
- bass:{name:"Graves reforçados",preamp:-3,gains:[5,4,3,1,0,0,0,1,1,0]},
- classical:{name:"Clássico",preamp:-1,gains:[2,1,0,-1,-1,0,1,2,2,3]}
-};
-function enhancerStatus(message,isError=false){const el=$("audioEnhancerStatus");if(el){el.textContent=message;el.classList.toggle("error",isError);}}
-function selectedEnhancerLabel(){const mode=$("audioEnhancerMode")?.value||"smart";return EQ_PRESETS[mode]?.name||"Inteligente";}
-function formatDb(value){const n=Number(value);return (n>0?"+":n<0?"−":"")+Math.abs(n)+" dB";}
-function applyEnhancerSettings(){
- const preampInput=$("enhancerPreamp");
- if(preampInput){const db=Number(preampInput.value);if($("enhancerPreampValue"))$("enhancerPreampValue").textContent=formatDb(db);if(enhancerPreamp)enhancerPreamp.gain.setTargetAtTime(Math.pow(10,db/20),enhancerContext.currentTime,.025);}
- EQ_BANDS.forEach((band,index)=>{
-  const input=$(band.id),out=$(band.id+"Value");if(!input)return;
-  const gain=Number(input.value);if(out)out.textContent=formatDb(gain);
-  if(enhancerFilters[index])enhancerFilters[index].gain.setTargetAtTime(gain,enhancerContext.currentTime,.025);
- });
-}
-function setEnhancerEnabled(enabled){
- enhancerEnabled=enabled;
- if(enhancerDryGain&&enhancerWetGain){const now=enhancerContext.currentTime;enhancerDryGain.gain.setTargetAtTime(enabled?0:1,now,.025);enhancerWetGain.gain.setTargetAtTime(enabled?1:0,now,.025);}
- const button=$("audioEnhancerToggle");if(button){button.textContent=enabled?"Desativar melhoria":"Ativar melhoria";button.classList.toggle("enabled",enabled);button.setAttribute("aria-pressed",String(enabled));}
- enhancerStatus(enabled?"Equalizador ativo • "+selectedEnhancerLabel():(enhancerCrossOriginReady?"Desligado • som original":"Desligado • CORS ainda não verificado"));
-}
-function applyEnhancerPreset(){
- const preset=EQ_PRESETS[$("audioEnhancerMode")?.value||"smart"]||EQ_PRESETS.smart;
- if($("enhancerPreamp"))$("enhancerPreamp").value=String(preset.preamp);
- EQ_BANDS.forEach((band,index)=>{const input=$(band.id);if(input)input.value=String(preset.gains[index]);});
- applyEnhancerSettings();
- if(enhancerEnabled)enhancerStatus("Equalizador ativo • "+preset.name);
-}
-function setFlatEqualizer(){
- $("audioEnhancerMode").value="flat";
- applyEnhancerPreset();
-}
-async function enableAudioEnhancer(){
- // Não conecte o áudio do Cloudflare R2 ao Web Audio sem CORS válido:
- // isso pode silenciar arquivos externos mesmo com os efeitos desligados.
- setEnhancerEnabled(false);
- enhancerStatus("Equalizador temporariamente desativado para proteger a reprodução. O som original continua disponível.", true);
- const button=$("audioEnhancerToggle");
- if(button){
-   button.disabled=true;
-   button.textContent="Equalizador desativado";
-   button.setAttribute("aria-pressed","false");
- }
-}
-
 let songs = [];
 let visibleSongs = [];
 let currentIndex = -1;
@@ -586,19 +525,6 @@ $("expandedPlayBtn").addEventListener("click", togglePlay);
 $("expandedPrevBtn").addEventListener("click", () => stepSong(-1));
 $("expandedNextBtn").addEventListener("click", () => stepSong(1));
 $("shuffleBtn").addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updateShuffleButton(); });
-$("enhancerPanelToggle").addEventListener("click",()=>{
- const panel=$("audioEnhancerPanel"),opening=panel.hidden;
- panel.hidden=!opening;
- $("enhancerPanelToggle").setAttribute("aria-expanded",String(opening));
- $("enhancerPanelArrow").textContent=opening?"−":"＋";
-});
-$("audioEnhancerToggle").addEventListener("click",enableAudioEnhancer);
-$("audioEnhancerMode").addEventListener("change",applyEnhancerPreset);
-$("enhancerPreamp").addEventListener("input",()=>{applyEnhancerSettings();if(enhancerEnabled)enhancerStatus("Equalizador ativo • "+selectedEnhancerLabel());});
-EQ_BANDS.forEach(band=>$(band.id).addEventListener("input",()=>{applyEnhancerSettings();if(enhancerEnabled)enhancerStatus("Equalizador ativo • ajuste personalizado");}));
-$("eqResetBtn").addEventListener("click",applyEnhancerPreset);
-$("eqFlatBtn").addEventListener("click",setFlatEqualizer);
-applyEnhancerSettings();
 updateShuffleButton();
 $("prevFolderBtn").addEventListener("click", () => stepFolder(-1));
 $("nextFolderBtn").addEventListener("click", () => stepFolder(1));
