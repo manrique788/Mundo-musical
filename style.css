@@ -74,3 +74,29 @@ button:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
 #message{margin:0;min-height:18px}
 @media(min-width:600px){.full{padding-top:28px;padding-bottom:28px}.bigCover{max-width:390px;margin-top:20px;margin-bottom:28px}.songLine{margin-bottom:30px}}
 @media(max-height:760px){.full{justify-content:flex-start;padding-top:18px}.bigCover{width:min(68vw,32vh);margin:28px auto 20px}.songLine{margin-bottom:24px}.fullProgress{margin-bottom:24px!important}.bigControls{margin-bottom:10px!important}}
+
+
+/* Tema roxo unificado com o reprodutor */
+:root{color-scheme:dark;--bg:#24062d;--panel:#35083f;--line:#6b3475;--text:#fff8ff;--muted:#d0afd8;--lime:#e0a6ff}
+body{background:radial-gradient(ellipse at 75% 0,#6c237d 0,transparent 48%),#24062d;color:var(--text)}
+header{background:#2b0734ed;border-bottom-color:#ffffff20}
+.brand span{background:#8d35a5;color:#fff}
+.brand b,.hero em,.hero small,.folderTitle small,.full>small{color:#e4a8ff}
+.folder{background:linear-gradient(140deg,#481253,#2d0936);border-color:#673176}
+.folder:hover{border-color:#d48be9}
+.folderArt,.cover{background:linear-gradient(135deg,#b34ed0,#54206c)}
+.a1{background:linear-gradient(135deg,#df7bca,#67265e)}.a2{background:linear-gradient(135deg,#a96de8,#48246c)}.a3{background:linear-gradient(135deg,#e1a0ff,#633278)}.a4{background:linear-gradient(135deg,#d65da5,#642052)}.a5{background:linear-gradient(135deg,#7e8be8,#39276d)}
+.folderTitle>div{background:linear-gradient(140deg,#d48be9,#72218a);color:#fff}
+.actions button{background:#481253;border-color:#784184}
+.actions #playFolder,.state button{background:#a944bd;color:white;border-color:#a944bd}
+.actions .selected,.track.active>span:first-child,.track.active .trackText b{color:#f0b5ff}
+.track:hover,.track.active{background:#ffffff0d}
+footer#miniPlayer{background:#2d0736f7;border-top-color:#794286}
+.controls .play{background:#9b38b4;color:#fff}
+.progress input,.full label input{accent-color:#e4a8ff}
+#overlay{background:#35083f}
+.bigCover{background:radial-gradient(circle at 70% 20%,#101d69,#09091c 58%,#51006d);color:#32c8ff}
+.bigControls .play{background:#650d79;color:#fff}
+.songLine>button{color:#fff}
+#message{color:#ffd0e7}
+.back{color:#e2c4eb}
