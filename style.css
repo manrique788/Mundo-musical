@@ -100,3 +100,18 @@ footer#miniPlayer{background:#2d0736f7;border-top-color:#794286}
 .songLine>button{color:#fff}
 #message{color:#ffd0e7}
 .back{color:#e2c4eb}
+
+
+/* Player móvel inspirado na referência: tela preta, capa grande e controles limpos. */
+.expanded-topbar{display:flex;align-items:center;justify-content:space-between;position:absolute;top:20px;left:22px;right:22px}.expanded-actions{display:flex;align-items:center;gap:20px}.expanded-actions button{border:0;background:transparent;color:#f6f6f6;font-size:30px;line-height:1;cursor:pointer;padding:2px}.expanded-actions button.active{color:#d6baff}.expanded-player{background:#000;border:0;border-radius:0;width:100%;height:100%;max-height:none;overflow:auto;padding:76px 28px 34px;display:flex;flex-direction:column;justify-content:center}.player-overlay{padding:0;background:#000}.player-close{position:static;width:40px;height:40px;border:0;background:transparent;font-size:48px;line-height:30px;font-family:Arial;color:#fff}.expanded-cover{width:min(82vw,520px);margin:0 auto 52px;border:0;border-radius:23px;background:#354b55;box-shadow:none;font-size:140px;color:#b9ced8}.expanded-label{display:none}.expanded-player h2{font:400 clamp(22px,5vw,32px) 'DM Sans',sans-serif;text-align:left;margin:0 8px 27px;white-space:nowrap;overflow:hidden;text-overflow:clip}.expanded-player p{display:none}.expanded-progress{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin:0 8px;color:#fff;font-size:15px}.expanded-progress input{grid-column:1 / -1;grid-row:1;width:100%;accent-color:#fff;height:4px}.expanded-progress span:first-child{grid-column:1;grid-row:2;text-align:left}.expanded-progress span:last-child{grid-column:2;grid-row:2;text-align:right}.expanded-controls{justify-content:space-between;gap:18px;margin:45px 16px 0}.expanded-controls button{font-size:34px;color:#f6f6f6}.expanded-controls #expandedPlayBtn{width:74px;height:74px;background:#f4f4f4;color:#050505;font-size:29px}.shuffle-control,.expanded-volume{display:none}
+.player-controls button[id$="FolderCompactBtn"]{font-size:22px;color:#c7b8e8}.player-controls{gap:12px}
+@media(max-width:650px){
+  .expanded-player{padding:86px 27px 40px}
+  .expanded-cover{width:min(88vw,520px);margin-bottom:52px;font-size:105px}
+  .expanded-player h2{font-size:23px;margin-bottom:25px}
+  .expanded-controls{margin-top:44px;margin-left:7px;margin-right:7px;gap:9px}
+  .expanded-controls button{font-size:29px}
+  .expanded-controls #expandedPlayBtn{width:68px;height:68px}
+  .expanded-topbar{top:22px;left:22px;right:22px}
+  .expanded-actions{gap:17px}.expanded-actions button{font-size:28px}
+}
