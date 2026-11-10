@@ -338,6 +338,12 @@ function playSong(index) {
   syncExpandedPlayer();
   updatePlaybackRows();
 
+  // No celular, a seleção abre diretamente o player em tela cheia, no estilo
+  // da referência enviada, sem exigir um segundo toque no player inferior.
+  if (window.matchMedia && window.matchMedia("(max-width: 650px)").matches) {
+    openExpandedPlayer();
+  }
+
   if (playback && typeof playback.then === "function") {
     playback.then(() => {
       if (requestId !== playbackRequestId) return;
