@@ -126,7 +126,11 @@ function renderGenreCards() {
         return;
       }
       const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === folderName);
-      if (firstIndex >= 0) playSong(firstIndex);
+      if (firstIndex >= 0) {
+        warmAudio(firstIndex);
+        const first = songs[firstIndex];
+        $("currentArtist").textContent = `Pasta: ${first.genre || folderName} — escolha uma música`;
+      }
       else console.error("Nenhuma música encontrada para a pasta:", folderName);
     });
   });
@@ -432,7 +436,14 @@ function stepFolder(delta) {
   $("searchInput").value = "";
   renderGenres(); renderGenreCards(); renderSongs();
   const firstIndex = songs.findIndex(song => (song.genre || "Sem pasta") === nextFolder);
-  if (firstIndex >= 0) playSong(firstIndex);
+  if (firstIndex >= 0) {
+    // A mudança de pasta não interrompe a faixa atual nem fica presa esperando
+    // um MP3 de até 10 MB. A primeira faixa da nova pasta é aquecida em cache
+    // e fica pronta para tocar quando o usuário escolher.
+    warmAudio(firstIndex);
+    const first = songs[firstIndex];
+    $("currentArtist").textContent = `Pasta: ${first.genre || nextFolder} — escolha uma música`;
+  }
 }
 
 document.addEventListener("click", event => {
