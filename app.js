@@ -65,9 +65,6 @@ async function loadSongs() {
     renderSongs();
     setupMediaSession();
     $("trackCount").textContent = `${songs.length} músicas disponíveis`;
-    // Começa a baixar a primeira faixa em segundo plano assim que o catálogo
-    // aparece, para que o primeiro toque não comece do zero.
-    window.setTimeout(() => warmAudio(0), 250);
   } catch (error) {
     console.error(error);
     $("trackCount").textContent = "Não foi possível carregar o catálogo";
@@ -272,6 +269,13 @@ function warmAudio(index) {
   nextAudio.load();
   preloadedIndex = index;
 }
+function stopPreload() {
+  if (!nextAudio) return;
+  nextAudio.pause();
+  nextAudio.removeAttribute("src");
+  nextAudio.load();
+  preloadedIndex = -1;
+}
 function canPreloadNextTrack() {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   return !(connection && (connection.saveData || /^(slow-2g|2g)$/i.test(connection.effectiveType || "")));
@@ -339,6 +343,8 @@ function playSong(index) {
   currentIndex = index;
   setupMediaSession();
   updateMediaSession(song);
+  // Libera a conexão do pré-carregador antes de tocar a escolha do usuário.
+  stopPreload();
   // Encerra a faixa anterior antes de trocar a origem, evitando disputas entre
   // solicitações quando o usuário toca várias vezes em "próxima".
   audio.pause();
@@ -346,6 +352,7 @@ function playSong(index) {
   // Definir a origem já inicia o carregamento; chamar load() de novo aqui
   // cancelava parte do buffer e aumentava a demora em celulares Android.
   audio.src = song.audioUrl;
+  audio.load();
   const playback = audio.play();
 
   setScrollingTitle($("currentTitle"), song.title);
