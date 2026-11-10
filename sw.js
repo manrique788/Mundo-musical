@@ -3,7 +3,7 @@ const AUDIO_CACHE = 'mundo-musical-audio-v1';
 const APP_SHELL = [
   './',
   './index.html',
-  './style.css?v=18',
+  './style.css?v=19',
   './app.js?v=26',
   './manifest.webmanifest',
   './icons/icon-192.png',
