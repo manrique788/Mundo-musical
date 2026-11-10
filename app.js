@@ -257,16 +257,20 @@ let visibleTrackLimit = INITIAL_TRACK_LIMIT;
 // rápida sem tentar baixar as 486 músicas do catálogo de uma vez.
 let preloadedIndex = -1;
 let preloadTimer = 0;
-const warmupPromises = new Map();
-async function warmAudio(index) {
+const nextAudio = document.createElement("audio");
+nextAudio.preload = "auto";
+nextAudio.muted = true;
+nextAudio.setAttribute("aria-hidden", "true");
+nextAudio.style.display = "none";
+document.body.appendChild(nextAudio);
+function warmAudio(index) {
   const song = songs[index];
   if (!song || !song.audioUrl || !canPreloadNextTrack()) return;
-  if (warmupPromises.has(index)) return warmupPromises.get(index);
-  const promise = fetch(song.audioUrl, { mode: "cors", cache: "force-cache" })
-    .then(response => response.ok ? response : null)
-    .catch(() => null);
-  warmupPromises.set(index, promise);
-  return promise;
+  if (preloadedIndex === index && nextAudio.src === song.audioUrl) return;
+  nextAudio.pause();
+  nextAudio.src = song.audioUrl;
+  nextAudio.load();
+  preloadedIndex = index;
 }
 function canPreloadNextTrack() {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -276,10 +280,6 @@ function preloadTrack(index) {
   const song = songs[index];
   if (!song || !song.audioUrl || !canPreloadNextTrack()) return;
   warmAudio(index);
-  if (preloadedIndex === index) return;
-  // O aquecimento via fetch é único e é guardado pelo service worker. Evita
-  // abrir um segundo download concorrente no elemento de áudio oculto.
-  preloadedIndex = index;
 }
 function preloadNextTrack(index) {
   clearTimeout(preloadTimer);
@@ -287,7 +287,6 @@ function preloadNextTrack(index) {
   const nextIndex = (index + 1) % songs.length;
   // Começa cedo, mas deixa a faixa atual iniciar primeiro.
   preloadTimer = window.setTimeout(() => {
-    warmAudio(nextIndex);
     preloadTrack(nextIndex);
   }, 350);
 }
