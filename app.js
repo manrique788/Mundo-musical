@@ -65,6 +65,9 @@ async function loadSongs() {
     renderSongs();
     setupMediaSession();
     $("trackCount").textContent = `${songs.length} músicas disponíveis`;
+    // Começa a baixar a primeira faixa em segundo plano assim que o catálogo
+    // aparece, para que o primeiro toque não comece do zero.
+    window.setTimeout(() => warmAudio(0), 250);
   } catch (error) {
     console.error(error);
     $("trackCount").textContent = "Não foi possível carregar o catálogo";
@@ -248,11 +251,19 @@ const INITIAL_TRACK_LIMIT = 100;
 let visibleTrackLimit = INITIAL_TRACK_LIMIT;
 // Mantém apenas a próxima faixa aquecida em segundo plano. Assim a troca fica
 // rápida sem tentar baixar as 486 músicas do catálogo de uma vez.
-const nextAudio = document.createElement("audio");
-nextAudio.preload = "auto";
-nextAudio.muted = true;
 let preloadedIndex = -1;
 let preloadTimer = 0;
+const warmupPromises = new Map();
+async function warmAudio(index) {
+  const song = songs[index];
+  if (!song || !song.audioUrl || !canPreloadNextTrack()) return;
+  if (warmupPromises.has(index)) return warmupPromises.get(index);
+  const promise = fetch(song.audioUrl, { mode: "cors", cache: "force-cache" })
+    .then(response => response.ok ? response : null)
+    .catch(() => null);
+  warmupPromises.set(index, promise);
+  return promise;
+}
 function canPreloadNextTrack() {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   return !(connection && (connection.saveData || /^(slow-2g|2g)$/i.test(connection.effectiveType || "")));
@@ -260,10 +271,10 @@ function canPreloadNextTrack() {
 function preloadTrack(index) {
   const song = songs[index];
   if (!song || !song.audioUrl || !canPreloadNextTrack()) return;
-  if (preloadedIndex === index && nextAudio.src === song.audioUrl) return;
-  nextAudio.pause();
-  nextAudio.src = song.audioUrl;
-  nextAudio.load();
+  warmAudio(index);
+  if (preloadedIndex === index) return;
+  // O aquecimento via fetch é único e é guardado pelo service worker. Evita
+  // abrir um segundo download concorrente no elemento de áudio oculto.
   preloadedIndex = index;
 }
 function preloadNextTrack(index) {
@@ -271,7 +282,10 @@ function preloadNextTrack(index) {
   if (!songs.length || !canPreloadNextTrack()) return;
   const nextIndex = (index + 1) % songs.length;
   // Começa cedo, mas deixa a faixa atual iniciar primeiro.
-  preloadTimer = window.setTimeout(() => preloadTrack(nextIndex), 350);
+  preloadTimer = window.setTimeout(() => {
+    warmAudio(nextIndex);
+    preloadTrack(nextIndex);
+  }, 350);
 }
 function updateShuffleButton() {
   const button = $("shuffleBtn");
