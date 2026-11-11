@@ -137,7 +137,7 @@ function closeFolder() {
   queue = [];
   $("genreCards").scrollIntoView({behavior:"smooth",block:"start"});
 }
-function renderSongList() {
+function renderSongList() {\n  renderDrawer();
   const shown = queue.slice(0,visibleLimit);
   $("songList").innerHTML = shown.map(function(songIndex,position) {
     const song = songs[songIndex];
@@ -152,6 +152,44 @@ function renderSongList() {
   const remaining = queue.length - shown.length;
   $("loadMoreSongs").hidden = remaining <= 0;
   $("loadMoreSongs").textContent = remaining > 0 ? "Carregar mais " + Math.min(PAGE_SIZE,remaining) + " músicas · " + remaining + " restantes" : "";
+}
+function renderDrawer() {
+  const title = $("drawerTitle");
+  if (!title) return;
+  const current = songs[currentIndex];
+  title.textContent = current ? current.title : "Nenhuma música selecionada";
+  $("drawerArtist").textContent = current ? current.artist : "Escolha uma pasta para começar";
+  $("drawerFolder").textContent = activeFolder || "Nenhuma pasta";
+  $("drawerQueueCount").textContent = queue.length.toLocaleString("pt-BR") + (queue.length === 1 ? " música" : " músicas");
+  $("drawerShuffleBtn").classList.toggle("active",shuffleEnabled);
+  $("drawerShuffleBtn").setAttribute("aria-pressed",String(shuffleEnabled));
+  $("drawerShuffleBtn").innerHTML = "⤨ <span>Aleatório " + (shuffleEnabled ? "ligado" : "desligado") + "</span>";
+  $("drawerQueue").innerHTML = queue.map(function(songIndex,position) {
+    const song = songs[songIndex];
+    const isCurrent = songIndex === currentIndex;
+    return '<button type="button" class="drawer-queue-row ' + (isCurrent ? "current" : "") + '" data-queue-index="' + songIndex + '">' +
+      '<span class="drawer-queue-number">' + (isCurrent && !audio.paused ? "♫" : String(position+1).padStart(2,"0")) + '</span>' +
+      '<span class="drawer-queue-info"><strong>' + escapeHtml(song.title) + '</strong><small>' + escapeHtml(song.artist) + '</small></span>' +
+      '<span class="drawer-queue-state">' + (isCurrent && !audio.paused ? "TOCANDO" : "▶") + '</span></button>';
+  }).join("") || '<div class="drawer-empty">Abra uma pasta para ver as músicas da fila.</div>';
+}
+function openPlayerDrawer() {
+  renderDrawer();
+  $("playerDrawer").hidden = false;
+  document.body.classList.add("player-open");
+}
+function closePlayerDrawer() {
+  $("playerDrawer").hidden = true;
+  document.body.classList.remove("player-open");
+}
+function switchFolder(direction) {
+  if (!folders.length) return;
+  let currentFolderIndex = folders.findIndex(folder => folder.name === activeFolder);
+  if (currentFolderIndex < 0) currentFolderIndex = 0;
+  const nextIndex = (currentFolderIndex + direction + folders.length) % folders.length;
+  openFolder(folders[nextIndex].name,true);
+  renderDrawer();
+  showToast("Pasta: " + folders[nextIndex].name);
 }
 function currentQueuePosition() { return queue.indexOf(currentIndex); }
 function nextSongIndex(direction) {
@@ -247,7 +285,7 @@ function setupMediaSession() {
     try { navigator.mediaSession.setActionHandler(action,actions[action]); } catch (_) {}
   });
 }
-function updateButtons() {
+function updateButtons() {\n  renderDrawer();
   const playing = !audio.paused && !audio.ended;
   $("playBtn").textContent = playing ? "Ⅱ" : "▶";
   $("shuffleBtn").classList.toggle("active",shuffleEnabled);
@@ -275,6 +313,20 @@ $("songList").addEventListener("click",function(event) {
     else playSong(index);
   }
 });
+$("expandPlayerBtn").addEventListener("click",openPlayerDrawer);
+$("closePlayerBtn").addEventListener("click",closePlayerDrawer);
+$("drawerBackdrop").addEventListener("click",closePlayerDrawer);
+$("drawerShuffleBtn").addEventListener("click",function(){
+  shuffleEnabled = !shuffleEnabled;
+  updateButtons(); renderDrawer();
+  showToast(shuffleEnabled ? "Aleatório ligado" : "Aleatório desligado");
+});
+$("drawerPrevFolderBtn").addEventListener("click",function(){switchFolder(-1);});
+$("drawerNextFolderBtn").addEventListener("click",function(){switchFolder(1);});
+$("drawerQueue").addEventListener("click",function(event){
+  const row = event.target.closest("[data-queue-index]");
+  if (row) playSong(Number(row.dataset.queueIndex));
+});
 $("playBtn").addEventListener("click",togglePlay);
 $("prevBtn").addEventListener("click",function(){skip(-1);});
 $("nextBtn").addEventListener("click",function(){skip(1);});
@@ -299,8 +351,8 @@ audio.addEventListener("ended",function() {
   if (repeatMode === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
   skip(1);
 });
-audio.addEventListener("play",function(){updateButtons();updateMediaState("playing");});
-audio.addEventListener("pause",function(){updateButtons();updateMediaState("paused");});
+audio.addEventListener("play",function(){updateButtons();updateMediaState("playing");renderSongListIfOpen();});
+audio.addEventListener("pause",function(){updateButtons();updateMediaState("paused");renderSongListIfOpen();});
 audio.addEventListener("error",function(){showToast("Erro ao carregar o áudio. Pulando para a próxima faixa.");});
 document.addEventListener("visibilitychange",function(){
   if (!document.hidden && currentIndex >= 0) updateMediaMetadata(songs[currentIndex]);
