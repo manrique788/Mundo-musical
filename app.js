@@ -115,8 +115,37 @@ function renderFolders() {
       '<span class="folder-art"><span>♫</span><i></i></span>' +
       '<span class="folder-name">' + escapeHtml(folder.name) + '</span>' +
       '<span class="folder-count">' + folder.count.toLocaleString("pt-BR") + (folder.count === 1 ? " música" : " músicas") + '</span>' +
-      '<span class="folder-arrow">▶</span></button>';
+      '<span class="folder-arrow">▶</span><span class="folder-download" data-download-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" title="Baixar pasta" aria-label="Baixar pasta">⇩</span></button>';
   }).join("");
+}
+function safeFileName(value) {
+  return safeText(value).replace(/[\\/:*?"<>|]/g,"-").replace(/\s+/g," ").trim().slice(0,150);
+}
+async function downloadFolder(folderName) {
+  const tracks = songs.filter(song => song.folder === folderName);
+  if (!tracks.length || !window.fflate) return;
+  if (!window.confirm("Baixar " + tracks.length + " músicas da pasta “" + folderName + "” em um arquivo ZIP?")) return;
+  const files = {};
+  try {
+    for (let i=0; i<tracks.length; i++) {
+      showToast("Preparando download: " + (i+1) + "/" + tracks.length);
+      const response = await fetch(tracks[i].audioUrl,{mode:"cors",cache:"no-store"});
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const path = new URL(tracks[i].audioUrl).pathname;
+      const extension = (path.match(/\.[a-z0-9]+$/i) || [".mp3"])[0];
+      files[String(i+1).padStart(3,"0") + " - " + safeFileName(tracks[i].title) + extension] = new Uint8Array(await response.arrayBuffer());
+    }
+    showToast("Compactando a pasta…");
+    const zip = window.fflate.zipSync(files,{level:0});
+    const url = URL.createObjectURL(new Blob([zip],{type:"application/zip"}));
+    const link = document.createElement("a");
+    link.href=url; link.download=safeFileName(folderName)+".zip";
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url),60000);
+    showToast("Download iniciado");
+  } catch (error) {
+    console.error(error); showToast("Não foi possível baixar esta pasta");
+  }
 }
 function openFolder(name, shouldPlay) {
   activeFolder = name;
@@ -299,6 +328,8 @@ function setVolume(value) {
   $("volume").value = String(value);
 }
 $("genreCards").addEventListener("click",function(event) {
+  const download = event.target.closest("[data-download-folder]");
+  if (download) { event.preventDefault(); event.stopPropagation(); downloadFolder(download.dataset.downloadFolder); return; }
   const retry = event.target.closest("#retryCatalog");
   if (retry) { loadCatalog(); return; }
   const card = event.target.closest("[data-folder]");
