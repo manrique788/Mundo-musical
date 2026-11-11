@@ -88,7 +88,16 @@ async function loadCatalog() {
     const counts = new Map();
     songs.forEach(song => counts.set(song.folder,(counts.get(song.folder)||0)+1));
     folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
-      .sort((a,b) => a.name.localeCompare(b.name,"pt-BR"));
+      .sort((a,b) => {
+        const priority = name => {
+          const normalized = name.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();
+          if (normalized.includes("mega funk")) return 1;
+          if (normalized.includes("funk")) return 0;
+          return 2;
+        };
+        const difference = priority(a.name) - priority(b.name);
+        return difference || a.name.localeCompare(b.name,"pt-BR");
+      });
     renderFolders();
     $("trackCount").textContent = songs.length.toLocaleString("pt-BR");
     $("folderCount").textContent = folders.length.toLocaleString("pt-BR");
