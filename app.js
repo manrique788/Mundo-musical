@@ -82,7 +82,7 @@ async function loadCatalog() {
         folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
         _index:index
       });
-    }).filter(Boolean);
+    }).filter(Boolean).map(function(song,index){ return Object.assign({},song,{_index:index}); });
 
     if (!songs.length) throw new Error("Nenhuma faixa válida foi encontrada.");
     const counts = new Map();
