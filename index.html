@@ -73,7 +73,7 @@
 <footer class="player">
   <div class="player-track">
     <div class="cover-small" id="currentCover"><span>♫</span></div>
-    <div class="track-meta"><strong id="currentTitle">Escolha uma pasta</strong><span id="currentArtist">Sua rádio está pronta para tocar</span></div>
+    <div class="track-meta"><strong id="currentTitle">Escolha uma pasta</strong><span id="currentArtist">Sua rádio está pronta para tocar</span></div><button class="expand-player" id="expandPlayerBtn" type="button" aria-label="Abrir player completo" title="Abrir player completo">⌃</button>
   </div>
   <div class="player-center">
     <div class="player-controls">
@@ -88,6 +88,24 @@
   <div class="player-right"><span>🔊</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"></div>
   <audio id="audio" preload="metadata"></audio>
 </footer>
+<section class="player-drawer" id="playerDrawer" hidden aria-label="Player completo">
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <div class="drawer-panel">
+    <div class="drawer-handle"></div>
+    <div class="drawer-top"><div><span class="section-kicker">MUNDO MUSICAL PLAYER</span><h2>Seu reprodutor</h2></div><button id="closePlayerBtn" class="drawer-close" type="button" aria-label="Fechar player">✕</button></div>
+    <div class="drawer-now">
+      <div class="drawer-cover">♫</div>
+      <div class="drawer-track"><strong id="drawerTitle">Nenhuma música selecionada</strong><span id="drawerArtist">Escolha uma pasta para começar</span><small id="drawerFolder">Nenhuma pasta</small></div>
+    </div>
+    <div class="drawer-controls">
+      <button id="drawerShuffleBtn" type="button" aria-pressed="false">⤨ <span>Aleatório desligado</span></button>
+      <button id="drawerPrevFolderBtn" type="button">◀ <span>Pasta anterior</span></button>
+      <button id="drawerNextFolderBtn" type="button"><span>Próxima pasta</span> ▶</button>
+    </div>
+    <div class="drawer-queue-head"><div><h3>Fila desta pasta</h3><span id="drawerQueueCount">0 músicas</span></div><span class="queue-hint">Toque em uma faixa para ouvir</span></div>
+    <div class="drawer-queue" id="drawerQueue"></div>
+  </div>
+</section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="app.js?v=43"></script>
 <script>
