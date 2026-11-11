@@ -137,7 +137,8 @@ function closeFolder() {
   queue = [];
   $("genreCards").scrollIntoView({behavior:"smooth",block:"start"});
 }
-function renderSongList() {\n  renderDrawer();
+function renderSongList() {
+  renderDrawer();
   const shown = queue.slice(0,visibleLimit);
   $("songList").innerHTML = shown.map(function(songIndex,position) {
     const song = songs[songIndex];
@@ -285,7 +286,8 @@ function setupMediaSession() {
     try { navigator.mediaSession.setActionHandler(action,actions[action]); } catch (_) {}
   });
 }
-function updateButtons() {\n  renderDrawer();
+function updateButtons() {
+  renderDrawer();
   const playing = !audio.paused && !audio.ended;
   $("playBtn").textContent = playing ? "Ⅱ" : "▶";
   $("shuffleBtn").classList.toggle("active",shuffleEnabled);
