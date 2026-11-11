@@ -116,3 +116,56 @@ button{font:inherit}
   .player-controls button{font-size:14px;min-width:21px}
   .player-controls .play-main{width:35px;height:35px;min-width:35px;min-height:35px}
 }
+
+
+/* Player mobile reconstruído em linhas independentes: nunca sobrepor controles. */
+@media (max-width: 650px) {
+  body { padding-bottom: 178px !important; }
+  .player {
+    position: fixed !important;
+    left: 0; right: 0; bottom: 0;
+    min-height: 0 !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow: visible !important;
+  }
+  .player-track {
+    grid-column: 1 !important; grid-row: 1 !important;
+    width: 100% !important; max-width: none !important;
+    min-width: 0 !important; padding: 0 !important;
+  }
+  .player-center { display: contents !important; }
+  .player-controls {
+    position: static !important; grid-column: 1 !important; grid-row: 2 !important;
+    width: 100% !important; display: flex !important;
+    justify-content: center !important; align-items: center !important;
+    gap: clamp(18px, 7vw, 34px) !important; margin: 0 !important;
+    order: initial !important;
+  }
+  .player-controls button {
+    display: inline-flex !important; align-items: center !important;
+    justify-content: center !important; min-width: 34px !important;
+    min-height: 38px !important; padding: 4px !important;
+    font-size: 19px !important; line-height: 1 !important;
+  }
+  .player-controls .play-main {
+    width: 42px !important; height: 42px !important;
+    min-width: 42px !important; min-height: 42px !important;
+  }
+  .progress-row {
+    position: static !important; grid-column: 1 !important; grid-row: 3 !important;
+    width: 100% !important; min-width: 0 !important;
+    display: flex !important; align-items: center !important;
+    gap: 8px !important; height: 15px !important; margin: 0 !important;
+    font-size: 9px !important;
+  }
+  .progress-row span { display: block !important; flex: 0 0 auto !important; }
+  .progress-row input { display: block !important; flex: 1 1 auto !important; width: 100% !important; min-width: 0 !important; height: 5px !important; margin: 0 !important; }
+  .player-right { display: none !important; }
+  .toast { bottom: 185px !important; }
+}
