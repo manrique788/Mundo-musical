@@ -218,7 +218,7 @@ function renderDrawer() {
 function openPlayerDrawer() {
   renderDrawer();
   $("playerDrawer").hidden = false;
-  setQueueExpanded(false);
+  setQueueExpanded(true);
   document.body.classList.add("player-open");
 }
 function closePlayerDrawer() {
@@ -228,9 +228,9 @@ function closePlayerDrawer() {
 function setQueueExpanded(expanded) {
   const panel = $("drawerPanel") || document.querySelector(".drawer-panel");
   if (!panel) return;
-  panel.classList.toggle("queue-expanded", expanded);
+  panel.classList.add("queue-expanded");
   const hint = $("drawerQueueGrabber").querySelector(".grabber-hint");
-  if (hint) hint.textContent = expanded ? "Deslize para baixo para guardar a fila" : "Deslize para cima para ver a fila";
+  if (hint) hint.textContent = "Próximas faixas";
 }
 function switchFolder(direction) {
   if (!folders.length) return;
