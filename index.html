@@ -78,6 +78,7 @@
   <div class="player-center">
     <div class="player-controls">
       <button id="shuffleBtn" type="button" title="Aleatório" aria-label="Aleatório">⤨</button>
+      <button id="mixtraxBtn" type="button" title="MixTrax: desligado" aria-label="MixTrax">Mix</button>
       <button id="prevBtn" type="button" title="Música anterior" aria-label="Música anterior">⏮</button>
       <button id="playBtn" class="play-main" type="button" title="Reproduzir" aria-label="Reproduzir">▶</button>
       <button id="nextBtn" type="button" title="Próxima música" aria-label="Próxima música">⏭</button>
@@ -108,7 +109,7 @@
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=46"></script>
+<script src="app.js?v=47"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>
