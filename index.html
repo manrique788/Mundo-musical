@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=50">
+<link rel="stylesheet" href="style.css?v=51">
 <title>Music Rádio</title>
 </head>
 <body>
@@ -90,21 +90,18 @@
 </footer>
 <section class="player-drawer" id="playerDrawer" hidden aria-label="Player completo">
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
-  <div class="drawer-panel">
+  <div class="drawer-panel" id="drawerPanel">
     <div class="drawer-top"><button id="closePlayerBtn" class="drawer-close" type="button" aria-label="Minimizar player">⌄</button><div class="drawer-mode"><button class="active" type="button">Música</button><button type="button">Vídeo</button></div><div class="drawer-top-actions"><span>⌁</span><span>⋮</span></div></div>
     <div class="drawer-now"><div class="drawer-cover"><img id="drawerCover" src="icons/user-logo-512.png" alt="Capa da música"></div><div class="drawer-track"><strong id="drawerTitle">Nenhuma música selecionada</strong><span id="drawerArtist">Escolha uma pasta para começar</span><small id="drawerFolder">Nenhuma pasta</small></div><div class="drawer-actions"><button type="button" aria-label="Curtir">♡</button><button type="button" aria-label="Não gostei">♧</button><button type="button" aria-label="Compartilhar">↗</button><button type="button" aria-label="Mais opções">⋮</button></div></div>
     <div class="drawer-progress"><span id="drawerCurrentTime">0:00</span><input id="drawerProgress" type="range" min="0" max="100" value="0" aria-label="Progresso da música"><span id="drawerDuration">0:00</span></div>
     <div class="drawer-main-controls"><button id="drawerShuffleBtn" type="button" aria-label="Aleatório">⤨</button><button id="drawerPrevBtn" type="button" aria-label="Anterior">⏮</button><button id="drawerPlayBtn" class="drawer-play" type="button" aria-label="Reproduzir">▶</button><button id="drawerNextBtn" type="button" aria-label="Próxima">⏭</button><button id="drawerRepeatBtn" type="button" aria-label="Repetir">↻</button></div>
-    <div class="drawer-tabs"><button class="active" type="button">A SEGUIR</button><button type="button">LETRAS</button><button type="button">RELACIONADAS</button></div>
-    <div class="queue-chips"><button>Romance</button><button>Conhecidas</button><button>Em alta</button><button>Festa</button><button>Agitada</button></div>
-    <div class="drawer-folder-nav"><button id="drawerPrevFolderBtn" type="button">‹</button><strong id="drawerFolderName">Nenhuma pasta</strong><button id="drawerNextFolderBtn" type="button">›</button></div>
-    <div class="drawer-queue-head"><div><h3 id="drawerQueueHeading">A seguir</h3><span id="drawerQueueCount">0 músicas</span></div><span class="queue-hint">Fila atual</span></div>
-    <div class="drawer-queue" id="drawerQueue"></div>
+    <div class="drawer-queue-grabber" id="drawerQueueGrabber"><span class="grabber-line"></span><div class="drawer-folder-nav"><button id="drawerPrevFolderBtn" type="button">‹</button><strong id="drawerFolderName">Nenhuma pasta</strong><button id="drawerNextFolderBtn" type="button">›</button></div><span class="grabber-hint">Deslize para cima para ver a fila</span></div>
+    <div class="drawer-queue-panel" id="drawerQueuePanel"><div class="drawer-tabs"><button class="active" type="button">A SEGUIR</button><button type="button">LETRAS</button><button type="button">RELACIONADAS</button></div><div class="queue-chips"><button>Romance</button><button>Conhecidas</button><button>Em alta</button><button>Festa</button><button>Agitada</button></div><div class="drawer-queue-head"><div><h3 id="drawerQueueHeading">A seguir</h3><span id="drawerQueueCount">0 músicas</span></div><span class="queue-hint">Fila atual</span></div><div class="drawer-queue" id="drawerQueue"></div></div>
   </div>
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=50"></script>
+<script src="app.js?v=51"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>

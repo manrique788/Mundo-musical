@@ -213,11 +213,19 @@ function renderDrawer() {
 function openPlayerDrawer() {
   renderDrawer();
   $("playerDrawer").hidden = false;
+  setQueueExpanded(false);
   document.body.classList.add("player-open");
 }
 function closePlayerDrawer() {
   $("playerDrawer").hidden = true;
   document.body.classList.remove("player-open");
+}
+function setQueueExpanded(expanded) {
+  const panel = $("drawerPanel") || document.querySelector(".drawer-panel");
+  if (!panel) return;
+  panel.classList.toggle("queue-expanded", expanded);
+  const hint = $("drawerQueueGrabber").querySelector(".grabber-hint");
+  if (hint) hint.textContent = expanded ? "Deslize para baixo para guardar a fila" : "Deslize para cima para ver a fila";
 }
 function switchFolder(direction) {
   if (!folders.length) return;
@@ -357,6 +365,18 @@ $("songList").addEventListener("click",function(event) {
 $("expandPlayerBtn").addEventListener("click",openPlayerDrawer);
 $("closePlayerBtn").addEventListener("click",closePlayerDrawer);
 $("drawerBackdrop").addEventListener("click",closePlayerDrawer);
+let queueTouchStartY = 0;
+$("drawerQueueGrabber").addEventListener("click",function(event){
+  if (event.target.closest("button")) return;
+  const panel = document.querySelector(".drawer-panel");
+  setQueueExpanded(!panel.classList.contains("queue-expanded"));
+});
+$("drawerPanel")?.addEventListener("touchstart",function(event){ queueTouchStartY = event.touches[0].clientY; },{passive:true});
+$("drawerPanel")?.addEventListener("touchend",function(event){
+  const delta = event.changedTouches[0].clientY - queueTouchStartY;
+  if (Math.abs(delta) < 45) return;
+  setQueueExpanded(delta < 0);
+},{passive:true});
 $("drawerShuffleBtn").addEventListener("click",function(){
   shuffleEnabled = !shuffleEnabled;
   updateButtons(); renderDrawer();
