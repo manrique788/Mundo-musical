@@ -157,7 +157,12 @@ function openFolder(name, shouldPlay) {
   $("listTitle").textContent = name;
   $("folderSubtitle").textContent = queue.length.toLocaleString("pt-BR") + " músicas nesta pasta";
   renderSongList();
-  if (shouldPlay && queue.length) playSong(queue[0]);
+  if (shouldPlay && queue.length) {
+    playSong(queue[0]);
+    if (window.matchMedia("(max-width: 650px)").matches) {
+      window.setTimeout(openPlayerDrawer, 80);
+    }
+  }
 }
 function closeFolder() {
   $("folderView").hidden = true;
@@ -359,7 +364,10 @@ $("songList").addEventListener("click",function(event) {
   if (row) {
     const index = Number(row.dataset.songIndex);
     if (index === currentIndex && !audio.paused) audio.pause();
-    else playSong(index);
+    else {
+      playSong(index);
+      if (window.matchMedia("(max-width: 650px)").matches) window.setTimeout(openPlayerDrawer,80);
+    }
   }
 });
 $("expandPlayerBtn").addEventListener("click",openPlayerDrawer);
