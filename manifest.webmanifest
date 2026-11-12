@@ -1,6 +1,6 @@
 {
-  "name": "Mundo Musical",
-  "short_name": "Mundo Musical",
+  "name": "Music",
+  "short_name": "Music",
   "description": "Descubra e ouça músicas online.",
   "lang": "pt-BR",
   "start_url": "./",

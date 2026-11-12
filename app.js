@@ -77,7 +77,7 @@ async function loadCatalog() {
       seen.add(key);
       return Object.assign({}, song, {
         title:title,
-        artist:safeText(song.artist || "Mundo Musical"),
+        artist:safeText(song.artist || "Music"),
         audioUrl:audioUrl,
         folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
         _index:index
@@ -295,7 +295,7 @@ function updateMediaMetadata(song) {
   if (!("mediaSession" in navigator) || !song) return;
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title:song.title, artist:song.artist, album:"Mundo Musical Rádio"
+      title:song.title, artist:song.artist, album:"Music Rádio"
     });
   } catch (_) {}
 }

@@ -7,7 +7,7 @@ O projeto agora é um **PWA instalável**, sem precisar publicar na Play Store o
 ### Android (Chrome)
 1. Abra o site publicado no Chrome.
 2. Toque em **＋ Instalar** no cabeçalho ou no menu ⋮ do navegador.
-3. Confirme em **Instalar**. O ícone Mundo Musical aparecerá na tela inicial.
+3. Confirme em **Instalar**. O ícone Music aparecerá na tela inicial.
 
 ### iPhone (Safari)
 1. Abra o site no Safari.
