@@ -202,3 +202,6 @@ button{font:inherit}
 }
 
 .folder-download{position:absolute;right:57px;bottom:17px;width:32px;height:32px;display:grid;place-items:center;border:1px solid #ffffff24;border-radius:50%;background:#ffffff13;color:var(--cyan);font-size:18px;line-height:1;z-index:2;cursor:pointer}.folder-download:hover{background:var(--cyan);color:#07141a}@media(max-width:650px){.folder-download{right:47px;bottom:12px;width:27px;height:27px;font-size:16px}}
+
+.folder-compact-controls{display:flex;align-items:center;gap:5px;margin-left:auto;flex:0 0 auto}.folder-compact-controls button{width:29px;height:29px;display:grid;place-items:center;border:1px solid #ffffff20;border-radius:50%;background:#ffffff0a;color:#cbd7e7;font-size:21px;line-height:1;cursor:pointer}.folder-compact-controls button:hover{background:#46e3d01c;color:var(--cyan)}.folder-compact-controls .expand-player{margin-left:2px}
+@media(max-width:650px){.folder-compact-controls{gap:3px}.folder-compact-controls button{width:25px;height:25px;font-size:18px}.folder-compact-controls .expand-player{width:29px;height:29px;font-size:20px}.player-track{max-width:100%!important}.track-meta{min-width:0;flex:1}}

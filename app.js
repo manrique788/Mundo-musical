@@ -357,6 +357,8 @@ $("drawerShuffleBtn").addEventListener("click",function(){
 });
 $("drawerPrevFolderBtn").addEventListener("click",function(){switchFolder(-1);});
 $("drawerNextFolderBtn").addEventListener("click",function(){switchFolder(1);});
+$("prevFolderCompactBtn").addEventListener("click",function(){switchFolder(-1);});
+$("nextFolderCompactBtn").addEventListener("click",function(){switchFolder(1);});
 $("drawerQueue").addEventListener("click",function(event){
   const row = event.target.closest("[data-queue-index]");
   if (row) playSong(Number(row.dataset.queueIndex));
