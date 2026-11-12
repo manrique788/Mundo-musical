@@ -14,13 +14,6 @@ let repeatMode = "off";
 let visibleLimit = PAGE_SIZE;
 let requestId = 0;
 let toastTimer = 0;
-let mixtraxEnabled = false;
-let crossfadeRunning = false;
-let crossfadeFrame = 0;
-const MIXTRAX_SECONDS = 40;
-const mixAudio = new Audio();
-mixAudio.preload = "auto";
-mixAudio.crossOrigin = "anonymous";
 const history = [];
 const palettes = ["#263f70","#50326f","#155c67","#70432d","#3b4e86","#32664e","#74405c","#315b79"];
 
@@ -243,69 +236,10 @@ function nextSongIndex(direction) {
   if (next < 0) return repeatMode === "all" ? queue[queue.length-1] : queue[0];
   return queue[next];
 }
-function cancelCrossfade() {
-  if (crossfadeFrame) cancelAnimationFrame(crossfadeFrame);
-  crossfadeFrame = 0;
-  crossfadeRunning = false;
-  mixAudio.pause();
-  mixAudio.removeAttribute("src");
-  mixAudio.load();
-  audio.volume = Number($("volume").value || 0.8);
-}
-function startCrossfade() {
-  if (!mixtraxEnabled || crossfadeRunning || currentIndex < 0 || !audio.duration) return;
-  let next = nextSongIndex(1);
-  // Com o MixTrax ligado, a estação continua em ciclo mesmo que a repetição
-  // normal esteja desligada.
-  if (next < 0 && queue.length) next = queue[0];
-  if (next < 0 || !songs[next]) return;
-  const nextSong = songs[next];
-  crossfadeRunning = true;
-  mixAudio.src = nextSong.audioUrl;
-  mixAudio.volume = 0;
-  mixAudio.load();
-  mixAudio.play().catch(() => { crossfadeRunning = false; showToast("Não foi possível preparar a próxima faixa."); });
-  const fadeMs = Math.min(MIXTRAX_SECONDS * 1000, Math.max(5000, (audio.duration - audio.currentTime) * 1000));
-  const started = performance.now();
-  const targetVolume = Number($("volume").value || 0.8);
-  const animate = now => {
-    if (!crossfadeRunning) return;
-    const progress = Math.min(1, (now - started) / fadeMs);
-    audio.volume = targetVolume * (1 - progress);
-    mixAudio.volume = targetVolume * progress;
-    if (progress >= 1) { finishCrossfade(next, nextSong, targetVolume); return; }
-    crossfadeFrame = requestAnimationFrame(animate);
-  };
-  crossfadeFrame = requestAnimationFrame(animate);
-  showToast("MixTrax: transição de 40 segundos");
-}
-function finishCrossfade(nextIndex, nextSong, targetVolume) {
-  crossfadeRunning = false;
-  crossfadeFrame = 0;
-  const position = mixAudio.currentTime;
-  audio.pause();
-  audio.src = nextSong.audioUrl;
-  audio.load();
-  audio.volume = targetVolume;
-  currentIndex = nextIndex;
-  $("currentTitle").textContent = nextSong.title;
-  $("currentArtist").textContent = nextSong.artist;
-  updateMediaMetadata(nextSong);
-  renderSongListIfOpen();
-  audio.addEventListener("loadedmetadata", function seekAfterLoad() {
-    audio.removeEventListener("loadedmetadata", seekAfterLoad);
-    if (Number.isFinite(position) && position > 0 && position < audio.duration) audio.currentTime = position;
-  });
-  audio.play().catch(() => showToast("Não foi possível continuar a mixagem."));
-  mixAudio.pause();
-  mixAudio.removeAttribute("src");
-  mixAudio.load();
-}
 function playSong(index) {
   const song = songs[index];
   if (!song) return;
   const id = ++requestId;
-  cancelCrossfade();
   currentIndex = index;
   if (!queue.includes(index)) {
     activeFolder = song.folder;
@@ -389,10 +323,6 @@ function updateButtons() {
   $("shuffleBtn").classList.toggle("active",shuffleEnabled);
   $("repeatBtn").classList.toggle("active",repeatMode !== "off");
   $("repeatBtn").textContent = repeatMode === "one" ? "↻¹" : "↻";
-  $("mixtraxBtn").classList.toggle("active",mixtraxEnabled);
-  $("mixtraxBtn").textContent = mixtraxEnabled ? "Mix✓" : "Mix";
-  $("mixtraxBtn").title = mixtraxEnabled ? "MixTrax ligado — transição de 40 segundos" : "MixTrax desligado";
-  $("mixtraxBtn").setAttribute("aria-pressed",String(mixtraxEnabled));
 }
 function setVolume(value) {
   audio.volume = Number(value);
@@ -435,12 +365,6 @@ $("playBtn").addEventListener("click",togglePlay);
 $("prevBtn").addEventListener("click",function(){skip(-1);});
 $("nextBtn").addEventListener("click",function(){skip(1);});
 $("shuffleBtn").addEventListener("click",function(){shuffleEnabled = !shuffleEnabled;updateButtons();showToast(shuffleEnabled ? "Aleatório ativado" : "Aleatório desativado");});
-$("mixtraxBtn").addEventListener("click",function(){
-  mixtraxEnabled = !mixtraxEnabled;
-  if (!mixtraxEnabled) cancelCrossfade();
-  updateButtons();
-  showToast(mixtraxEnabled ? "MixTrax ligado — fade de 40 segundos" : "MixTrax desligado");
-});
 $("repeatBtn").addEventListener("click",function(){
   repeatMode = repeatMode === "off" ? "all" : repeatMode === "all" ? "one" : "off";
   updateButtons();
@@ -456,10 +380,8 @@ audio.addEventListener("timeupdate",function() {
   const percent = audio.duration ? audio.currentTime / audio.duration * 100 : 0;
   $("progress").value = percent;
   $("progress").style.setProperty("--progress-percent",percent + "%");
-  if (mixtraxEnabled && audio.duration - audio.currentTime <= MIXTRAX_SECONDS) startCrossfade();
 });
 audio.addEventListener("ended",function() {
-  if (crossfadeRunning) return;
   if (repeatMode === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
   skip(1);
 });
