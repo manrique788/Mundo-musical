@@ -157,12 +157,7 @@ function openFolder(name, shouldPlay) {
   $("listTitle").textContent = name;
   $("folderSubtitle").textContent = queue.length.toLocaleString("pt-BR") + " músicas nesta pasta";
   renderSongList();
-  if (shouldPlay && queue.length) {
-    playSong(queue[0]);
-    if (window.matchMedia("(max-width: 650px)").matches) {
-      window.setTimeout(openPlayerDrawer, 80);
-    }
-  }
+  if (shouldPlay && queue.length) playSong(queue[0]);
 }
 function closeFolder() {
   $("folderView").hidden = true;
@@ -195,21 +190,14 @@ function renderDrawer() {
   title.textContent = current ? current.title : "Nenhuma música selecionada";
   $("drawerArtist").textContent = current ? current.artist : "Escolha uma pasta para começar";
   $("drawerFolder").textContent = activeFolder || "Nenhuma pasta";
-  $("drawerFolderName").textContent = activeFolder || "Nenhuma pasta";
-  $("drawerPlayBtn").textContent = current && !audio.paused ? "Ⅱ" : "▶";
-  $("drawerRepeatBtn").classList.toggle("active",repeatMode !== "off");
-  $("drawerRepeatBtn").textContent = repeatMode === "one" ? "↻¹" : "↻";
-  $("drawerShuffleBtn").classList.toggle("active",shuffleEnabled);
-  $("drawerCover").src = current ? "icons/user-logo-512.png" : "icons/user-logo-512.png";
   $("drawerQueueCount").textContent = queue.length.toLocaleString("pt-BR") + (queue.length === 1 ? " música" : " músicas");
   $("drawerShuffleBtn").classList.toggle("active",shuffleEnabled);
   $("drawerShuffleBtn").setAttribute("aria-pressed",String(shuffleEnabled));
-  $("drawerShuffleBtn").title = shuffleEnabled ? "Aleatório ligado" : "Aleatório desligado";
+  $("drawerShuffleBtn").innerHTML = "⤨ <span>Aleatório " + (shuffleEnabled ? "ligado" : "desligado") + "</span>";
   $("drawerQueue").innerHTML = queue.map(function(songIndex,position) {
     const song = songs[songIndex];
     const isCurrent = songIndex === currentIndex;
     return '<button type="button" class="drawer-queue-row ' + (isCurrent ? "current" : "") + '" data-queue-index="' + songIndex + '">' +
-      '<img class="drawer-queue-cover" src="icons/user-logo-192.png" alt="">' +
       '<span class="drawer-queue-number">' + (isCurrent && !audio.paused ? "♫" : String(position+1).padStart(2,"0")) + '</span>' +
       '<span class="drawer-queue-info"><strong>' + escapeHtml(song.title) + '</strong><small>' + escapeHtml(song.artist) + '</small></span>' +
       '<span class="drawer-queue-state">' + (isCurrent && !audio.paused ? "TOCANDO" : "▶") + '</span></button>';
@@ -218,19 +206,11 @@ function renderDrawer() {
 function openPlayerDrawer() {
   renderDrawer();
   $("playerDrawer").hidden = false;
-  setQueueExpanded(true);
   document.body.classList.add("player-open");
 }
 function closePlayerDrawer() {
   $("playerDrawer").hidden = true;
   document.body.classList.remove("player-open");
-}
-function setQueueExpanded(expanded) {
-  const panel = $("drawerPanel") || document.querySelector(".drawer-panel");
-  if (!panel) return;
-  panel.classList.add("queue-expanded");
-  const hint = $("drawerQueueGrabber").querySelector(".grabber-hint");
-  if (hint) hint.textContent = "Próximas faixas";
 }
 function switchFolder(direction) {
   if (!folders.length) return;
@@ -364,27 +344,12 @@ $("songList").addEventListener("click",function(event) {
   if (row) {
     const index = Number(row.dataset.songIndex);
     if (index === currentIndex && !audio.paused) audio.pause();
-    else {
-      playSong(index);
-      if (window.matchMedia("(max-width: 650px)").matches) window.setTimeout(openPlayerDrawer,80);
-    }
+    else playSong(index);
   }
 });
 $("expandPlayerBtn").addEventListener("click",openPlayerDrawer);
 $("closePlayerBtn").addEventListener("click",closePlayerDrawer);
 $("drawerBackdrop").addEventListener("click",closePlayerDrawer);
-let queueTouchStartY = 0;
-$("drawerQueueGrabber").addEventListener("click",function(event){
-  if (event.target.closest("button")) return;
-  const panel = document.querySelector(".drawer-panel");
-  setQueueExpanded(!panel.classList.contains("queue-expanded"));
-});
-$("drawerPanel")?.addEventListener("touchstart",function(event){ queueTouchStartY = event.touches[0].clientY; },{passive:true});
-$("drawerPanel")?.addEventListener("touchend",function(event){
-  const delta = event.changedTouches[0].clientY - queueTouchStartY;
-  if (Math.abs(delta) < 45) return;
-  setQueueExpanded(delta < 0);
-},{passive:true});
 $("drawerShuffleBtn").addEventListener("click",function(){
   shuffleEnabled = !shuffleEnabled;
   updateButtons(); renderDrawer();
@@ -392,17 +357,6 @@ $("drawerShuffleBtn").addEventListener("click",function(){
 });
 $("drawerPrevFolderBtn").addEventListener("click",function(){switchFolder(-1);});
 $("drawerNextFolderBtn").addEventListener("click",function(){switchFolder(1);});
-$("drawerPlayBtn").addEventListener("click",togglePlay);
-$("drawerPrevBtn").addEventListener("click",function(){skip(-1);});
-$("drawerNextBtn").addEventListener("click",function(){skip(1);});
-$("drawerRepeatBtn").addEventListener("click",function(){
-  repeatMode = repeatMode === "off" ? "all" : repeatMode === "all" ? "one" : "off";
-  updateButtons();
-  showToast(repeatMode === "off" ? "Repetição desligada" : repeatMode === "all" ? "Repetir pasta" : "Repetir música");
-});
-$("drawerProgress").addEventListener("input",function(event){
-  if (audio.duration) audio.currentTime = audio.duration * Number(event.target.value) / 100;
-});
 $("drawerQueue").addEventListener("click",function(event){
   const row = event.target.closest("[data-queue-index]");
   if (row) playSong(Number(row.dataset.queueIndex));
@@ -426,9 +380,6 @@ audio.addEventListener("timeupdate",function() {
   const percent = audio.duration ? audio.currentTime / audio.duration * 100 : 0;
   $("progress").value = percent;
   $("progress").style.setProperty("--progress-percent",percent + "%");
-  $("drawerCurrentTime").textContent = formatTime(audio.currentTime);
-  $("drawerDuration").textContent = formatTime(audio.duration);
-  $("drawerProgress").value = percent;
 });
 audio.addEventListener("ended",function() {
   if (repeatMode === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
