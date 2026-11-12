@@ -1,5 +1,5 @@
-const CACHE_NAME = 'mundo-musical-radio-v23';
-const APP_SHELL = ['./','./index.html','./style.css?v=49','./app.js?v=49','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
+const CACHE_NAME = 'mundo-musical-radio-v24';
+const APP_SHELL = ['./','./index.html','./style.css?v=50','./app.js?v=50','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
