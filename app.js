@@ -254,7 +254,10 @@ function cancelCrossfade() {
 }
 function startCrossfade() {
   if (!mixtraxEnabled || crossfadeRunning || currentIndex < 0 || !audio.duration) return;
-  const next = nextSongIndex(1);
+  let next = nextSongIndex(1);
+  // Com o MixTrax ligado, a estação continua em ciclo mesmo que a repetição
+  // normal esteja desligada.
+  if (next < 0 && queue.length) next = queue[0];
   if (next < 0 || !songs[next]) return;
   const nextSong = songs[next];
   crossfadeRunning = true;
