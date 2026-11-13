@@ -91,10 +91,10 @@ function startOfflineSync() {
   offlineSyncRunning = true;
   (async function() {
     let ready = 0;
-    offlineProgressBusy(0,songs.length,"Verificando músicas offline…");
+    offlineProgressBusy(0,songs.length,"Preparando armazenamento offline…");
     for (let i=0; i<songs.length; i++) {
       const song = songs[i];
-      offlineProgressBusy(i,songs.length,"Carregando música " + (i+1) + "/" + songs.length);
+      offlineProgressBusy(i,songs.length,"Salvando offline " + (i+1) + "/" + songs.length);
       try {
         if (await offlineGet(song.audioUrl)) { ready++; }
         else { const response = await fetch(song.audioUrl,{mode:"cors",cache:"no-store"}); if (response.ok) { await offlinePut(song.audioUrl,await response.blob()); ready++; } }
