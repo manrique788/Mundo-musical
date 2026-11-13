@@ -106,27 +106,31 @@ function startOfflineSync() {
   if (!navigator.onLine) { offlineStatus("Sem internet: usando músicas já salvas"); return; }
   offlineSyncRunning = true;
   (async function() {
-    let ready = 0, failed = 0, processed = 0, cursor = 0;
+    let ready = 0, failed = 0, processed = 0;
     const total = songs.length;
-    offlineProgressBusy(0,total,"Preparando armazenamento offline…");
-    async function worker() {
-      while (true) {
-        const i = cursor++;
-        if (i >= total) return;
-        const song = songs[i];
-        offlineProgressBusy(processed,total,"Salvando offline " + (processed + 1) + "/" + total);
-        try {
-          if (await offlineGet(song.audioUrl)) ready++;
-          else if (await saveSongOffline(song)) ready++;
-          else failed++;
-        } catch (error) { failed++; console.warn("Offline: falha ao guardar",song.title,error); }
-        processed++;
-        offlineProgressBusy(processed,total,"Salvando offline " + processed + "/" + total);
-        offlineStatus("Salvando offline: " + processed + "/" + total + (failed ? " · falhas: " + failed : ""));
+    offlineProgressBusy(0,total,"Preparando pastas offline…");
+    for (const folder of folders) {
+      const folderSongs = songs.filter(song => song.folder === folder.name);
+      let cursor = 0, folderDone = 0;
+      offlineStatus("Pasta " + folder.name + " · 0/" + folderSongs.length);
+      async function worker() {
+        while (true) {
+          const i = cursor++;
+          if (i >= folderSongs.length) return;
+          const song = folderSongs[i];
+          try {
+            if (await offlineGet(song.audioUrl)) ready++;
+            else if (await saveSongOffline(song)) ready++;
+            else failed++;
+          } catch (error) { failed++; console.warn("Offline: falha ao guardar",song.title,error); }
+          processed++;
+          folderDone++;
+          offlineProgressBusy(processed,total,"Pasta " + folder.name + " · " + folderDone + "/" + folderSongs.length);
+          offlineStatus("Salvando " + folder.name + ": " + folderDone + "/" + folderSongs.length + (failed ? " · falhas: " + failed : ""));
+        }
       }
+      await Promise.all(Array.from({length:Math.min(4,folderSongs.length)},worker));
     }
-    const workers = Math.min(4,total);
-    await Promise.all(Array.from({length:workers},worker));
     offlineProgress(total,total);
     offlineStatus(failed ? "Offline: " + ready + " salvas · " + failed + " falharam" : "Offline pronto: " + ready + " músicas");
     const bar = $("offlineProgress");
