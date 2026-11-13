@@ -214,3 +214,6 @@ button{font:inherit}
 
 /* Indicador offline visível no celular */
 .offline-progress{height:23px;background:#061936;color:#fff;display:flex;align-items:center;padding:0 10px;font:600 10px/1 DM Sans,sans-serif;letter-spacing:.1px;box-shadow:0 2px 8px #0008}.offline-progress-label{display:block}.offline-progress-fill{position:absolute;left:0;right:auto;bottom:0;height:4px;background:#087cff;box-shadow:0 0 10px #087cff;transition:width .25s ease}.offline-progress.busy .offline-progress-fill{background:linear-gradient(90deg,#006cff,#54b5ff,#006cff);background-size:200% 100%;animation:offline-loading 1s linear infinite}.offline-progress.complete .offline-progress-fill{background:#18a0ff;box-shadow:0 0 8px #18a0ff}
+
+/* Barra compacta: texto abaixo e linha fina azul escuro */
+.offline-progress{height:27px;align-items:flex-end;padding:0 10px 6px;background:#06152b}.offline-progress-fill{height:2px;background:#0754a6;box-shadow:0 0 5px #0754a6}.offline-progress.busy .offline-progress-fill{background:linear-gradient(90deg,#063d80,#0b68c7,#063d80);background-size:200% 100%}.offline-progress.complete .offline-progress-fill{background:#0a5da8;box-shadow:none}
