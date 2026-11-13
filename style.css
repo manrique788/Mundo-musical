@@ -217,3 +217,6 @@ button{font:inherit}
 
 /* Barra compacta: texto abaixo e linha fina azul escuro */
 .offline-progress{height:27px;align-items:flex-end;padding:0 10px 6px;background:#06152b}.offline-progress-fill{height:2px;background:#0754a6;box-shadow:0 0 5px #0754a6}.offline-progress.busy .offline-progress-fill{background:linear-gradient(90deg,#063d80,#0b68c7,#063d80);background-size:200% 100%}.offline-progress.complete .offline-progress-fill{background:#0a5da8;box-shadow:none}
+
+/* Linha no alto; mensagem posicionada logo abaixo, no espaço livre */
+.offline-progress{height:3px;padding:0;display:block;background:#06152b;overflow:visible}.offline-progress-fill{height:2px;bottom:0}.offline-progress span{position:absolute;top:7px;left:10px;right:10px;display:block;color:#0b4d91;font:600 10px/14px DM Sans,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
