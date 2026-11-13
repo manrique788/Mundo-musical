@@ -106,21 +106,28 @@ function startOfflineSync() {
   if (!navigator.onLine) { offlineStatus("Sem internet: usando músicas já salvas"); return; }
   offlineSyncRunning = true;
   (async function() {
-    let ready = 0, failed = 0, processed = 0;
-    offlineProgressBusy(0,songs.length,"Preparando armazenamento offline…");
-    for (let i=0; i<songs.length; i++) {
-      const song = songs[i];
-      offlineProgressBusy(processed,songs.length,"Salvando offline " + (i+1) + "/" + songs.length);
-      try {
-        if (await offlineGet(song.audioUrl)) ready++;
-        else if (await saveSongOffline(song)) ready++;
-        else failed++;
-      } catch (error) { failed++; console.warn("Offline: falha ao guardar",song.title,error); }
-      processed++;
-      offlineProgressBusy(processed,songs.length,"Salvando offline " + processed + "/" + songs.length);
-      offlineStatus("Salvando offline: " + processed + "/" + songs.length + (failed ? " · falhas: " + failed : ""));
+    let ready = 0, failed = 0, processed = 0, cursor = 0;
+    const total = songs.length;
+    offlineProgressBusy(0,total,"Preparando armazenamento offline…");
+    async function worker() {
+      while (true) {
+        const i = cursor++;
+        if (i >= total) return;
+        const song = songs[i];
+        offlineProgressBusy(processed,total,"Salvando offline " + (processed + 1) + "/" + total);
+        try {
+          if (await offlineGet(song.audioUrl)) ready++;
+          else if (await saveSongOffline(song)) ready++;
+          else failed++;
+        } catch (error) { failed++; console.warn("Offline: falha ao guardar",song.title,error); }
+        processed++;
+        offlineProgressBusy(processed,total,"Salvando offline " + processed + "/" + total);
+        offlineStatus("Salvando offline: " + processed + "/" + total + (failed ? " · falhas: " + failed : ""));
+      }
     }
-    offlineProgress(songs.length,songs.length);
+    const workers = Math.min(4,total);
+    await Promise.all(Array.from({length:workers},worker));
+    offlineProgress(total,total);
     offlineStatus(failed ? "Offline: " + ready + " salvas · " + failed + " falharam" : "Offline pronto: " + ready + " músicas");
     const bar = $("offlineProgress");
     if (bar) bar.classList.remove("busy");
