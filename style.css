@@ -211,3 +211,6 @@ button{font:inherit}
 .offline-progress{position:fixed;z-index:1000;left:0;right:0;top:0;height:3px;background:#3a0b12;pointer-events:none}.offline-progress-fill{height:100%;width:0;background:#e52b3b;box-shadow:0 0 8px #e52b3b;transition:width .25s ease}.offline-progress.complete .offline-progress-fill{background:#f04452;box-shadow:none}
 
 .offline-progress.busy .offline-progress-fill{min-width:2%;background:linear-gradient(90deg,#b51225,#ff4b59,#b51225);background-size:200% 100%;animation:offline-loading 1s linear infinite}@keyframes offline-loading{from{background-position:200% 0}to{background-position:-200% 0}}
+
+/* Indicador offline visível no celular */
+.offline-progress{height:23px;background:#061936;color:#fff;display:flex;align-items:center;padding:0 10px;font:600 10px/1 DM Sans,sans-serif;letter-spacing:.1px;box-shadow:0 2px 8px #0008}.offline-progress-label{display:block}.offline-progress-fill{position:absolute;left:0;right:auto;bottom:0;height:4px;background:#087cff;box-shadow:0 0 10px #087cff;transition:width .25s ease}.offline-progress.busy .offline-progress-fill{background:linear-gradient(90deg,#006cff,#54b5ff,#006cff);background-size:200% 100%;animation:offline-loading 1s linear infinite}.offline-progress.complete .offline-progress-fill{background:#18a0ff;box-shadow:0 0 8px #18a0ff}

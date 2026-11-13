@@ -70,7 +70,7 @@ function offlinePut(url,blob) {
     request.onsuccess = resolve; request.onerror = function() { reject(request.error); };
   }); });
 }
-function offlineStatus(text) { const el = $("offlineStatus"); if (el) el.textContent = text; }
+function offlineStatus(text) { const el = $("offlineStatus"); if (el) el.textContent = text; const label = $("offlineProgressLabel"); if (label) label.textContent = text; }
 function offlineProgress(done,total) {
   const bar = $("offlineProgress");
   const fill = $("offlineProgressFill");
