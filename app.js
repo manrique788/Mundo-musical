@@ -47,6 +47,47 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
 }
+function openOfflineDb() {
+  if (offlineDbPromise) return offlineDbPromise;
+  offlineDbPromise = new Promise(function(resolve,reject) {
+    const request = indexedDB.open(OFFLINE_DB,1);
+    request.onupgradeneeded = function() { request.result.createObjectStore("audio",{keyPath:"url"}); };
+    request.onsuccess = function() { resolve(request.result); };
+    request.onerror = function() { reject(request.error); };
+  });
+  return offlineDbPromise;
+}
+function offlineGet(url) {
+  return openOfflineDb().then(function(db) { return new Promise(function(resolve,reject) {
+    const request = db.transaction("audio").objectStore("audio").get(url);
+    request.onsuccess = function() { resolve(request.result ? request.result.blob : null); };
+    request.onerror = function() { reject(request.error); };
+  }); });
+}
+function offlinePut(url,blob) {
+  return openOfflineDb().then(function(db) { return new Promise(function(resolve,reject) {
+    const request = db.transaction("audio","readwrite").objectStore("audio").put({url:url,blob:blob,savedAt:Date.now()});
+    request.onsuccess = resolve; request.onerror = function() { reject(request.error); };
+  }); });
+}
+function offlineStatus(text) { const el = $("offlineStatus"); if (el) el.textContent = text; }
+function startOfflineSync() {
+  if (offlineSyncRunning || !songs.length || !navigator.onLine || !window.indexedDB) return;
+  offlineSyncRunning = true;
+  (async function() {
+    let ready = 0;
+    for (let i=0; i<songs.length; i++) {
+      const song = songs[i];
+      try {
+        if (await offlineGet(song.audioUrl)) { ready++; }
+        else { const response = await fetch(song.audioUrl,{mode:"cors",cache:"no-store"}); if (response.ok) { await offlinePut(song.audioUrl,await response.blob()); ready++; } }
+      } catch (error) { console.warn("Offline: falha ao guardar",song.title,error); }
+      offlineStatus("Preparando offline: " + ready + "/" + songs.length);
+    }
+    offlineStatus(ready === songs.length ? "Offline pronto" : "Offline: " + ready + "/" + songs.length);
+    offlineSyncRunning = false;
+  })();
+}
 async function loadCatalog() {
   $("genreCards").innerHTML = '<div class="loading-card">Carregando sua biblioteca...</div>';
   try {
@@ -99,14 +140,24 @@ async function loadCatalog() {
         return difference || a.name.localeCompare(b.name,"pt-BR");
       });
     renderFolders();
+    try { localStorage.setItem("music-catalog-v1",JSON.stringify(songs)); } catch (_) {}
+    offlineStatus("Preparando músicas offline…");
+    setTimeout(startOfflineSync,800);
     $("trackCount").textContent = songs.length.toLocaleString("pt-BR");
     $("folderCount").textContent = folders.length.toLocaleString("pt-BR");
     $("folderTotal").textContent = folders.length + " pastas disponíveis";
   } catch (error) {
     console.error("Falha ao carregar catálogo:",error);
-    $("genreCards").innerHTML = '<div class="error-card"><strong>Não conseguimos conectar à biblioteca.</strong><span>Verifique a conexão e tente novamente.</span><button id="retryCatalog" type="button">Tentar novamente</button></div>';
-    $("trackCount").textContent = "Indisponível";
-    $("folderTotal").textContent = "Catálogo indisponível";
+    try {
+      const saved = JSON.parse(localStorage.getItem("music-catalog-v1") || "null");
+      if (Array.isArray(saved) && saved.length) {
+        songs = saved; const counts = new Map(); songs.forEach(song => counts.set(song.folder,(counts.get(song.folder)||0)+1));
+        folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]})); renderFolders();
+        $("trackCount").textContent = songs.length.toLocaleString("pt-BR"); $("folderCount").textContent = folders.length.toLocaleString("pt-BR"); $("folderTotal").textContent = folders.length + " pastas disponíveis"; offlineStatus("Modo offline"); return;
+      }
+    } catch (_) {}
+    $("genreCards").innerHTML = '<div class="error-card"><strong>Não conseguimos conectar à biblioteca.</strong><span>Abra o Music uma vez com internet para preparar o modo offline.</span><button id="retryCatalog" type="button">Tentar novamente</button></div>';
+    $("trackCount").textContent = "Indisponível"; $("folderTotal").textContent = "Catálogo indisponível";
   }
 }
 function renderFolders() {
@@ -236,37 +287,28 @@ function nextSongIndex(direction) {
   if (next < 0) return repeatMode === "all" ? queue[queue.length-1] : queue[0];
   return queue[next];
 }
-function playSong(index) {
+async function playSong(index) {
   const song = songs[index];
   if (!song) return;
   const id = ++requestId;
   currentIndex = index;
-  if (!queue.includes(index)) {
-    activeFolder = song.folder;
-    queue = songs.filter(item => item.folder === activeFolder).map(item => item._index);
-  }
+  if (!queue.includes(index)) { activeFolder = song.folder; queue = songs.filter(item => item.folder === activeFolder).map(item => item._index); }
   audio.pause();
   audio.volume = Number($("volume").value || 0.8);
-  audio.src = song.audioUrl;
+  $("currentTitle").textContent = song.title; $("currentArtist").textContent = song.artist; $("currentCover").innerHTML = "<span>♫</span>"; $("playBtn").textContent = "Ⅱ";
+  if (!history.includes(index)) history.unshift(index); if (history.length > 30) history.pop();
+  updateMediaMetadata(song); renderSongListIfOpen();
+  try {
+    const blob = window.indexedDB ? await offlineGet(song.audioUrl) : null;
+    if (id !== requestId) return;
+    if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+    activeObjectUrl = blob ? URL.createObjectURL(blob) : "";
+    audio.src = activeObjectUrl || song.audioUrl;
+  } catch (_) { audio.src = song.audioUrl; }
+  if (id !== requestId) return;
   audio.load();
-  $("currentTitle").textContent = song.title;
-  $("currentArtist").textContent = song.artist;
-  $("currentCover").innerHTML = "<span>♫</span>";
-  $("playBtn").textContent = "Ⅱ";
-  if (!history.includes(index)) history.unshift(index);
-  if (history.length > 30) history.pop();
-  updateMediaMetadata(song);
-  renderSongListIfOpen();
-  audio.play().then(function() {
-    if (id !== requestId) return;
-    $("playBtn").textContent = "Ⅱ";
-    updateMediaState("playing");
-  }).catch(function(error) {
-    if (id !== requestId) return;
-    console.warn("Não foi possível iniciar o áudio:",error);
-    $("playBtn").textContent = "▶";
-    showToast("Não foi possível tocar esta faixa. Confira o acesso ao arquivo.");
-    updateMediaState("paused");
+  audio.play().then(function() { if (id === requestId) { $("playBtn").textContent = "Ⅱ"; updateMediaState("playing"); } }).catch(function(error) {
+    if (id !== requestId) return; console.warn("Não foi possível iniciar o áudio:",error); $("playBtn").textContent = "▶"; showToast("Não foi possível tocar esta faixa. Confira sua conexão ou o preparo offline."); updateMediaState("paused");
   });
 }
 function renderSongListIfOpen() {
