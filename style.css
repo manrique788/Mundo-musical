@@ -209,3 +209,5 @@ button{font:inherit}
 .offline-status{display:block;max-width:190px;color:#7f91aa;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.offline-status.ready{color:#69e6c8}@media(max-width:900px){.offline-status{display:none}}
 
 .offline-progress{position:fixed;z-index:1000;left:0;right:0;top:0;height:3px;background:#3a0b12;pointer-events:none}.offline-progress-fill{height:100%;width:0;background:#e52b3b;box-shadow:0 0 8px #e52b3b;transition:width .25s ease}.offline-progress.complete .offline-progress-fill{background:#f04452;box-shadow:none}
+
+.offline-progress.busy .offline-progress-fill{min-width:2%;background:linear-gradient(90deg,#b51225,#ff4b59,#b51225);background-size:200% 100%;animation:offline-loading 1s linear infinite}@keyframes offline-loading{from{background-position:200% 0}to{background-position:-200% 0}}

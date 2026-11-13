@@ -80,14 +80,21 @@ function offlineProgress(done,total) {
   bar.title = total ? "Músicas disponíveis offline: " + done + "/" + total : "Offline";
   bar.classList.toggle("complete",total > 0 && done >= total);
 }
+function offlineProgressBusy(done,total,message) {
+  const bar = $("offlineProgress");
+  if (bar) bar.classList.add("busy");
+  offlineProgress(Math.max(1,done),total);
+  if (message) offlineStatus(message);
+}
 function startOfflineSync() {
   if (offlineSyncRunning || !songs.length || !navigator.onLine || !window.indexedDB) return;
   offlineSyncRunning = true;
   (async function() {
     let ready = 0;
-    offlineProgress(0,songs.length);
+    offlineProgressBusy(0,songs.length,"Verificando músicas offline…");
     for (let i=0; i<songs.length; i++) {
       const song = songs[i];
+      offlineProgressBusy(i,songs.length,"Carregando música " + (i+1) + "/" + songs.length);
       try {
         if (await offlineGet(song.audioUrl)) { ready++; }
         else { const response = await fetch(song.audioUrl,{mode:"cors",cache:"no-store"}); if (response.ok) { await offlinePut(song.audioUrl,await response.blob()); ready++; } }
@@ -96,6 +103,8 @@ function startOfflineSync() {
       offlineStatus("Preparando offline: " + ready + "/" + songs.length);
     }
     offlineStatus(ready === songs.length ? "Offline pronto" : "Offline: " + ready + "/" + songs.length);
+    const bar = $("offlineProgress");
+    if (bar) bar.classList.remove("busy");
     offlineSyncRunning = false;
   })();
 }
