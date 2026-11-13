@@ -71,17 +71,28 @@ function offlinePut(url,blob) {
   }); });
 }
 function offlineStatus(text) { const el = $("offlineStatus"); if (el) el.textContent = text; }
+function offlineProgress(done,total) {
+  const bar = $("offlineProgress");
+  const fill = $("offlineProgressFill");
+  if (!bar || !fill) return;
+  const percent = total ? Math.min(100,Math.round(done / total * 100)) : 0;
+  fill.style.width = percent + "%";
+  bar.title = total ? "Músicas disponíveis offline: " + done + "/" + total : "Offline";
+  bar.classList.toggle("complete",total > 0 && done >= total);
+}
 function startOfflineSync() {
   if (offlineSyncRunning || !songs.length || !navigator.onLine || !window.indexedDB) return;
   offlineSyncRunning = true;
   (async function() {
     let ready = 0;
+    offlineProgress(0,songs.length);
     for (let i=0; i<songs.length; i++) {
       const song = songs[i];
       try {
         if (await offlineGet(song.audioUrl)) { ready++; }
         else { const response = await fetch(song.audioUrl,{mode:"cors",cache:"no-store"}); if (response.ok) { await offlinePut(song.audioUrl,await response.blob()); ready++; } }
       } catch (error) { console.warn("Offline: falha ao guardar",song.title,error); }
+      offlineProgress(ready,songs.length);
       offlineStatus("Preparando offline: " + ready + "/" + songs.length);
     }
     offlineStatus(ready === songs.length ? "Offline pronto" : "Offline: " + ready + "/" + songs.length);
