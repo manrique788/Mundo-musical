@@ -86,23 +86,42 @@ function offlineProgressBusy(done,total,message) {
   offlineProgress(Math.max(1,done),total);
   if (message) offlineStatus(message);
 }
+function fetchOfflineBlob(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url,{mode:"cors",cache:"no-store",signal:controller.signal}).then(function(response) {
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    return Promise.race([response.blob(),new Promise((_,reject) => setTimeout(() => reject(new Error("timeout")),timeoutMs))]);
+  }).finally(() => clearTimeout(timer));
+}
+async function saveSongOffline(song) {
+  for (let attempt=1; attempt<=3; attempt++) {
+    try { await offlinePut(song.audioUrl,await fetchOfflineBlob(song.audioUrl,30000)); return true; }
+    catch (error) { console.warn("Offline tentativa " + attempt + ":",song.title,error); if (attempt < 3) await new Promise(resolve => setTimeout(resolve,700)); }
+  }
+  return false;
+}
 function startOfflineSync() {
-  if (offlineSyncRunning || !songs.length || !navigator.onLine || !window.indexedDB) return;
+  if (offlineSyncRunning || !songs.length || !window.indexedDB) return;
+  if (!navigator.onLine) { offlineStatus("Sem internet: usando músicas já salvas"); return; }
   offlineSyncRunning = true;
   (async function() {
-    let ready = 0;
+    let ready = 0, failed = 0, processed = 0;
     offlineProgressBusy(0,songs.length,"Preparando armazenamento offline…");
     for (let i=0; i<songs.length; i++) {
       const song = songs[i];
-      offlineProgressBusy(i,songs.length,"Salvando offline " + (i+1) + "/" + songs.length);
+      offlineProgressBusy(processed,songs.length,"Salvando offline " + (i+1) + "/" + songs.length);
       try {
-        if (await offlineGet(song.audioUrl)) { ready++; }
-        else { const response = await fetch(song.audioUrl,{mode:"cors",cache:"no-store"}); if (response.ok) { await offlinePut(song.audioUrl,await response.blob()); ready++; } }
-      } catch (error) { console.warn("Offline: falha ao guardar",song.title,error); }
-      offlineProgress(ready,songs.length);
-      offlineStatus("Preparando offline: " + ready + "/" + songs.length);
+        if (await offlineGet(song.audioUrl)) ready++;
+        else if (await saveSongOffline(song)) ready++;
+        else failed++;
+      } catch (error) { failed++; console.warn("Offline: falha ao guardar",song.title,error); }
+      processed++;
+      offlineProgressBusy(processed,songs.length,"Salvando offline " + processed + "/" + songs.length);
+      offlineStatus("Salvando offline: " + processed + "/" + songs.length + (failed ? " · falhas: " + failed : ""));
     }
-    offlineStatus(ready === songs.length ? "Offline pronto" : "Offline: " + ready + "/" + songs.length);
+    offlineProgress(songs.length,songs.length);
+    offlineStatus(failed ? "Offline: " + ready + " salvas · " + failed + " falharam" : "Offline pronto: " + ready + " músicas");
     const bar = $("offlineProgress");
     if (bar) bar.classList.remove("busy");
     offlineSyncRunning = false;
