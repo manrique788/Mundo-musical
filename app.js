@@ -184,10 +184,12 @@ async function loadCatalog() {
     folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
       .sort((a,b) => {
         const priority = name => {
-          const normalized = name.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();
+          const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+          if (normalized === "funk" || (normalized.includes("funk") && !normalized.includes("mega") && !normalized.includes("eletro"))) return 0;
           if (normalized.includes("mega funk")) return 1;
-          if (normalized.includes("funk")) return 0;
-          return 2;
+          if (normalized.includes("eletro funk") || normalized.includes("eletrofunk")) return 2;
+          if (normalized.includes("flash back") || normalized.includes("flashback")) return 3;
+          return 4;
         };
         const difference = priority(a.name) - priority(b.name);
         return difference || a.name.localeCompare(b.name,"pt-BR");
