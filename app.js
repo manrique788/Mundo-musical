@@ -4,6 +4,9 @@ const $ = id => document.getElementById(id);
 const audio = $("audio");
 const API = "https://mundo-musical-api.manriquewb1234.workers.dev/catalog";
 const PAGE_SIZE = 100;
+const OFFLINE_DB = "music-offline-v2";
+let offlineDbPromise = null;
+let offlineSyncRunning = false;
 let songs = [];
 let folders = [];
 let activeFolder = "";
@@ -203,7 +206,7 @@ async function loadCatalog() {
       if (Array.isArray(saved) && saved.length) {
         songs = saved; const counts = new Map(); songs.forEach(song => counts.set(song.folder,(counts.get(song.folder)||0)+1));
         folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]})); renderFolders();
-        $("trackCount").textContent = songs.length.toLocaleString("pt-BR"); $("folderCount").textContent = folders.length.toLocaleString("pt-BR"); $("folderTotal").textContent = folders.length + " pastas disponíveis"; offlineStatus("Modo offline"); return;
+        $("trackCount").textContent = songs.length.toLocaleString("pt-BR"); $("folderCount").textContent = folders.length.toLocaleString("pt-BR"); $("folderTotal").textContent = folders.length + " pastas disponíveis"; offlineStatus("Catálogo salvo · preparando músicas offline…"); setTimeout(startOfflineSync,800); return;
       }
     } catch (_) {}
     $("genreCards").innerHTML = '<div class="error-card"><strong>Não conseguimos conectar à biblioteca.</strong><span>Abra o Music uma vez com internet para preparar o modo offline.</span><button id="retryCatalog" type="button">Tentar novamente</button></div>';
@@ -484,7 +487,9 @@ audio.addEventListener("pause",function(){updateButtons();updateMediaState("paus
 audio.addEventListener("error",function(){showToast("Erro ao carregar o áudio. Pulando para a próxima faixa.");});
 document.addEventListener("visibilitychange",function(){
   if (!document.hidden && currentIndex >= 0) updateMediaMetadata(songs[currentIndex]);
+  if (!document.hidden) setTimeout(startOfflineSync,500);
 });
+window.addEventListener("online",function(){ offlineStatus("Internet recuperada · retomando carregamento…"); setTimeout(startOfflineSync,300); });
 setupMediaSession();
 updateButtons();
 loadCatalog();
