@@ -224,3 +224,7 @@ button{font:inherit}
 /* Status offline abaixo da marca MUSIC */
 .brand-text{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}.brand-text .offline-progress-label{display:block;max-width:150px;color:#1767b1;font:600 8px/10px DM Sans,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.offline-progress span{display:none!important}
 @media(max-width:650px){.brand-text .offline-progress-label{max-width:125px;font-size:7px;line-height:9px}}
+
+/* A linha acompanha a borda inferior do cabeçalho */
+.offline-progress{top:86px;left:0;right:0;width:100vw}
+@media(max-width:650px){.offline-progress{top:70px}}
