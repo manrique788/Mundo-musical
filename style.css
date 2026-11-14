@@ -187,6 +187,8 @@ button{font:inherit}
 .drawer-controls{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:8px;margin:13px 0 19px}
 .drawer-controls button{min-height:43px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #ffffff18;border-radius:12px;background:#ffffff08;color:#dce8f7;font-size:13px;font-weight:700;cursor:pointer}
 .drawer-controls button span{font-size:10px}.drawer-controls button.active{background:#46e3d01c;border-color:#46e3d077;color:var(--cyan)}
+.drawer-controls .drawer-delete{grid-column:1/-1;min-height:38px;background:#e34d5a12;border-color:#e34d5a55;color:#ff9da5}
+.drawer-controls .drawer-delete:disabled{opacity:.4;cursor:not-allowed}
 .drawer-queue-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:9px}.drawer-queue-head h3{font:700 17px Outfit,sans-serif;margin:0 0 4px}.drawer-queue-head span{font-size:10px;color:#91a0b6}.drawer-queue-head .queue-hint{font-size:10px;color:#71819a}
 .drawer-queue{overflow:auto;overscroll-behavior:contain;min-height:100px;max-height:38dvh;padding-bottom:5px}
 .drawer-queue-row{width:100%;display:flex;align-items:center;gap:12px;padding:10px 9px;border:1px solid transparent;border-radius:11px;background:transparent;color:#eef3fb;text-align:left;cursor:pointer}

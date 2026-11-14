@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=67">
+<link rel="stylesheet" href="style.css?v=68">
 <title>Music Rádio</title>
 </head>
 <body>
@@ -102,6 +102,7 @@
       <button id="drawerShuffleBtn" type="button" aria-pressed="false">⤨ <span>Aleatório desligado</span></button>
       <button id="drawerPrevFolderBtn" type="button">◀ <span>Pasta anterior</span></button>
       <button id="drawerNextFolderBtn" type="button"><span>Próxima pasta</span> ▶</button>
+      <button id="deleteCurrentBtn" class="drawer-delete" type="button">🗑 <span>Excluir música atual</span></button>
     </div>
     <div class="drawer-queue-head"><div><h3>Fila desta pasta</h3><span id="drawerQueueCount">0 músicas</span></div><span class="queue-hint">Toque em uma faixa para ouvir</span></div>
     <div class="drawer-queue" id="drawerQueue"></div>
@@ -109,7 +110,7 @@
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=67"></script>
+<script src="app.js?v=68"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>

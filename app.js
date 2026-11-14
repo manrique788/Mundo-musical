@@ -5,6 +5,7 @@ const audio = $("audio");
 const API = "https://mundo-musical-api.manriquewb1234.workers.dev/catalog";
 const PAGE_SIZE = 100;
 const OFFLINE_DB = "music-offline-v2";
+const DELETED_SONGS_KEY = "music-deleted-songs-v1";
 let offlineDbPromise = null;
 let offlineSyncRunning = false;
 let activeObjectUrl = "";
@@ -73,6 +74,23 @@ function offlinePut(url,blob) {
     const request = db.transaction("audio","readwrite").objectStore("audio").put({url:url,blob:blob,savedAt:Date.now()});
     request.onsuccess = resolve; request.onerror = function() { reject(request.error); };
   }); });
+}
+function getDeletedSongs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DELETED_SONGS_KEY) || "[]");
+    return new Set(Array.isArray(saved) ? saved : []);
+  } catch (_) { return new Set(); }
+}
+function rememberDeletedSong(url) {
+  const deleted = getDeletedSongs();
+  deleted.add(url);
+  try { localStorage.setItem(DELETED_SONGS_KEY,JSON.stringify(Array.from(deleted))); } catch (_) {}
+}
+function offlineDelete(url) {
+  return openOfflineDb().then(function(db) { return new Promise(function(resolve) {
+    const request = db.transaction("audio","readwrite").objectStore("audio").delete(url);
+    request.onsuccess = request.onerror = function() { resolve(); };
+  }); }).catch(function() {});
 }
 function offlineStatus(text) { const el = $("offlineStatus"); if (el) el.textContent = text; const label = $("offlineProgressLabel"); if (label) label.textContent = text; }
 function offlineProgress(done,total) {
@@ -163,6 +181,7 @@ async function loadCatalog() {
     } while (cursor);
 
     const seen = new Set();
+    const deletedSongs = getDeletedSongs();
     songs = all.map(function(song, index) {
       const audioUrl = safeText(song.audioUrl || song.url).trim();
       const title = safeText(song.title || song.name).trim();
@@ -177,7 +196,7 @@ async function loadCatalog() {
         folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
         _index:index
       });
-    }).filter(Boolean).map(function(song,index){ return Object.assign({},song,{_index:index}); });
+    }).filter(Boolean).filter(function(song){ return !deletedSongs.has(song.audioUrl); }).map(function(song,index){ return Object.assign({},song,{_index:index}); });
 
     if (!songs.length) throw new Error("Nenhuma faixa válida foi encontrada.");
     const counts = new Map();
@@ -295,6 +314,8 @@ function renderDrawer() {
   if (!title) return;
   const current = songs[currentIndex];
   title.textContent = current ? current.title : "Nenhuma música selecionada";
+  const deleteButton = $("deleteCurrentBtn");
+  if (deleteButton) deleteButton.disabled = !current;
   $("drawerArtist").textContent = current ? current.artist : "Escolha uma pasta para começar";
   $("drawerFolder").textContent = activeFolder || "Nenhuma pasta";
   $("drawerQueueCount").textContent = queue.length.toLocaleString("pt-BR") + (queue.length === 1 ? " música" : " músicas");
@@ -309,6 +330,32 @@ function renderDrawer() {
       '<span class="drawer-queue-info"><strong>' + escapeHtml(song.title) + '</strong><small>' + escapeHtml(song.artist) + '</small></span>' +
       '<span class="drawer-queue-state">' + (isCurrent && !audio.paused ? "TOCANDO" : "▶") + '</span></button>';
   }).join("") || '<div class="drawer-empty">Abra uma pasta para ver as músicas da fila.</div>';
+}
+function deleteCurrentSong() {
+  const song = songs[currentIndex];
+  if (!song) { showToast("Nenhuma música está tocando."); return; }
+  if (!window.confirm("Excluir esta música somente deste aparelho?\n\n" + song.title + "\n\nO arquivo original do servidor não será apagado.")) return;
+  const deletedUrl = song.audioUrl;
+  rememberDeletedSong(deletedUrl);
+  offlineDelete(deletedUrl);
+  requestId++;
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  if (activeObjectUrl) { URL.revokeObjectURL(activeObjectUrl); activeObjectUrl = ""; }
+  currentIndex = -1;
+  queue = [];
+  const folderToKeep = activeFolder;
+  try {
+    const remaining = songs.filter(function(item){ return item.audioUrl !== deletedUrl; })
+      .map(function(item,index){ return Object.assign({},item,{_index:index}); });
+    localStorage.setItem("music-catalog-v1",JSON.stringify(remaining));
+  } catch (_) {}
+  showToast("Música excluída deste aparelho");
+  loadCatalog().then(function() {
+    if (folderToKeep && folders.some(function(folder){ return folder.name === folderToKeep; })) openFolder(folderToKeep,false);
+    renderDrawer();
+  });
 }
 function openPlayerDrawer() {
   renderDrawer();
@@ -496,6 +543,7 @@ $("drawerShuffleBtn").addEventListener("click",function(){
 });
 $("drawerPrevFolderBtn").addEventListener("click",function(){switchFolder(-1);});
 $("drawerNextFolderBtn").addEventListener("click",function(){switchFolder(1);});
+$("deleteCurrentBtn").addEventListener("click",deleteCurrentSong);
 $("prevFolderCompactBtn").addEventListener("click",function(){switchFolder(-1);});
 $("nextFolderCompactBtn").addEventListener("click",function(){switchFolder(1);});
 $("drawerQueue").addEventListener("click",function(event){
