@@ -342,27 +342,7 @@ function nextSongIndex(direction) {
   if (next < 0) return repeatMode === "all" ? queue[queue.length-1] : queue[0];
   return queue[next];
 }
-function waitForAudioReady(id) {
-  return new Promise(function(resolve,reject) {
-    if (id !== requestId) { reject(new Error("reprodução substituída")); return; }
-    if (audio.readyState >= 2) { resolve(); return; }
-    let settled = false;
-    const finish = function(error) {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      audio.removeEventListener("canplay",onReady);
-      audio.removeEventListener("error",onError);
-      error ? reject(error) : resolve();
-    };
-    const onReady = function() { finish(); };
-    const onError = function() { finish(new Error("fonte de áudio indisponível")); };
-    const timer = setTimeout(function() { finish(new Error("tempo excedido ao carregar áudio")); },10000);
-    audio.addEventListener("canplay",onReady,{once:true});
-    audio.addEventListener("error",onError,{once:true});
-  });
-}
-async function playSong(index) {
+function playSong(index) {
   const song = songs[index];
   if (!song) return;
   const id = ++requestId;
@@ -373,33 +353,51 @@ async function playSong(index) {
   $("currentTitle").textContent = song.title; $("currentArtist").textContent = song.artist; $("currentCover").innerHTML = "<span>♫</span>"; $("playBtn").textContent = "Ⅱ";
   if (!history.includes(index)) history.unshift(index); if (history.length > 30) history.pop();
   updateMediaMetadata(song); renderSongListIfOpen();
-  let blob = null;
-  try {
-    blob = window.indexedDB ? await offlineGet(song.audioUrl) : null;
-  } catch (_) { audio.src = song.audioUrl; }
+  if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
+  activeObjectUrl = "";
+
+  // Começa imediatamente pela URL online, sem aguardar IndexedDB. Isso preserva
+  // a autorização do toque do usuário no Android e evita ficar em 0:00.
+  audio.src = song.audioUrl;
+  audio.load();
+  const playRequest = audio.play();
+  if (playRequest && typeof playRequest.then === "function") {
+    playRequest.then(function() {
+      if (id === requestId) { $("playBtn").textContent = "Ⅱ"; updateMediaState("playing"); }
+    }).catch(function(error) {
+      if (id !== requestId) return;
+      console.warn("Reprodução online falhou:",error);
+      tryOfflinePlayback(song,id);
+    });
+  }
+
+  // O arquivo offline é consultado em paralelo, mas nunca bloqueia o primeiro play.
+  // Ele será usado se o dispositivo estiver sem internet ou se a fonte online falhar.
+  if (window.indexedDB) offlineGet(song.audioUrl).then(function(blob) {
+    if (!blob || id !== requestId || navigator.onLine !== false || !audio.paused) return;
+    tryOfflineBlob(blob,song,id);
+  }).catch(function(error) {
+    console.warn("Não foi possível consultar a cópia offline:",error);
+    if (id === requestId && navigator.onLine === false) showToast("Esta música ainda não foi salva offline.");
+  });
+}
+function tryOfflinePlayback(song,id) {
+  if (!window.indexedDB) { showToast("Não foi possível carregar esta música."); return; }
+  offlineGet(song.audioUrl).then(function(blob) {
+    if (!blob || id !== requestId) { showToast("Não foi possível carregar esta música."); return; }
+    tryOfflineBlob(blob,song,id);
+  }).catch(function() { if (id === requestId) showToast("Não foi possível carregar esta música."); });
+}
+function tryOfflineBlob(blob,song,id) {
   if (id !== requestId) return;
   if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
-  activeObjectUrl = blob ? URL.createObjectURL(blob) : "";
-  const sources = activeObjectUrl ? [activeObjectUrl,song.audioUrl] : [song.audioUrl];
-  let started = false;
-  for (let sourceIndex = 0; sourceIndex < sources.length && !started; sourceIndex++) {
-    if (id !== requestId) return;
-    audio.src = sources[sourceIndex];
-    audio.load();
-    try {
-      await waitForAudioReady(id);
-      await audio.play();
-      started = true;
-    } catch (error) {
-      console.warn("Tentativa de reprodução " + (sourceIndex + 1) + " falhou:",error);
-      if (sourceIndex === 0 && activeObjectUrl && sources.length > 1) {
-        URL.revokeObjectURL(activeObjectUrl);
-        activeObjectUrl = "";
-      }
-    }
-  }
-  if (started && id === requestId) { $("playBtn").textContent = "Ⅱ"; updateMediaState("playing"); }
-  else if (id === requestId) { $("playBtn").textContent = "▶"; showToast("Não foi possível carregar esta música. Tente novamente."); updateMediaState("paused"); }
+  activeObjectUrl = URL.createObjectURL(blob);
+  audio.src = activeObjectUrl;
+  audio.load();
+  const retry = audio.play();
+  if (retry && typeof retry.catch === "function") retry.catch(function(error) {
+    if (id === requestId) { console.warn("Reprodução offline falhou:",error); showToast("Toque novamente para reproduzir esta música."); }
+  });
 }
 function renderSongListIfOpen() {
   if (!$("folderView").hidden) renderSongList();
