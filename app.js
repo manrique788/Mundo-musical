@@ -251,7 +251,7 @@ async function loadCatalog() {
 function renderFolders() {
   $("genreCards").innerHTML = folders.map(function(folder,index) {
     return '<div class="folder-card" data-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" style="--folder-color:' + palettes[index % palettes.length] + '">' +
-      '<button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button>' +
+      '<div class="folder-menu-wrap"><button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button><div class="folder-menu-popover" data-folder-popover="' + escapeHtml(folder.name) + '" hidden><button type="button" data-delete-folder="' + escapeHtml(folder.name) + '">Excluir</button></div></div>' +
       '<span class="folder-art"><span>♫</span><i></i></span>' +
       '<span class="folder-name">' + escapeHtml(folder.name) + '</span>' +
       '<span class="folder-count">' + folder.count.toLocaleString("pt-BR") + (folder.count === 1 ? " música" : " músicas") + '</span>' +
@@ -551,8 +551,17 @@ function setVolume(value) {
   $("volume").value = String(value);
 }
 $("genreCards").addEventListener("click",function(event) {
+  const deleteFolderAction = event.target.closest("[data-delete-folder]");
+  if (deleteFolderAction) { event.preventDefault(); event.stopPropagation(); deleteFolder(deleteFolderAction.dataset.deleteFolder); return; }
   const folderMenu = event.target.closest("[data-folder-menu]");
-  if (folderMenu) { event.preventDefault(); event.stopPropagation(); deleteFolder(folderMenu.dataset.folderMenu); return; }
+  if (folderMenu) {
+    event.preventDefault(); event.stopPropagation();
+    const card = folderMenu.closest("[data-folder]");
+    const popover = card && card.querySelector("[data-folder-popover]");
+    document.querySelectorAll("[data-folder-popover]").forEach(function(item){ if (item !== popover) item.hidden = true; });
+    if (popover) popover.hidden = !popover.hidden;
+    return;
+  }
   const download = event.target.closest("[data-download-folder]");
   if (download) { event.preventDefault(); event.stopPropagation(); downloadFolder(download.dataset.downloadFolder); return; }
   const retry = event.target.closest("#retryCatalog");
