@@ -375,7 +375,15 @@ function togglePlay() {
     else if (folders.length) openFolder(folders[0].name,true);
     return;
   }
-  if (audio.paused) audio.play().catch(() => showToast("Não foi possível retomar a música."));
+  if (audio.paused) {
+    // Após ficar em segundo plano, o navegador pode descartar a fonte/blob atual.
+    // Nesse caso, recarrega a faixa pelo IndexedDB antes de tentar reproduzir.
+    if (!audio.src || audio.readyState === 0) {
+      playSong(currentIndex);
+      return;
+    }
+    audio.play().catch(() => playSong(currentIndex));
+  }
   else audio.pause();
 }
 function skip(direction) {
