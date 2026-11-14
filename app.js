@@ -6,6 +6,7 @@ const API = "https://mundo-musical-api.manriquewb1234.workers.dev/catalog";
 const PAGE_SIZE = 100;
 const OFFLINE_DB = "music-offline-v2";
 const DELETED_SONGS_KEY = "music-deleted-songs-v1";
+const DELETED_FOLDERS_KEY = "music-deleted-folders-v1";
 let offlineDbPromise = null;
 let offlineSyncRunning = false;
 let activeObjectUrl = "";
@@ -85,6 +86,17 @@ function rememberDeletedSong(url) {
   const deleted = getDeletedSongs();
   deleted.add(url);
   try { localStorage.setItem(DELETED_SONGS_KEY,JSON.stringify(Array.from(deleted))); } catch (_) {}
+}
+function getDeletedFolders() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DELETED_FOLDERS_KEY) || "[]");
+    return new Set(Array.isArray(saved) ? saved : []);
+  } catch (_) { return new Set(); }
+}
+function rememberDeletedFolder(name) {
+  const deleted = getDeletedFolders();
+  deleted.add(name);
+  try { localStorage.setItem(DELETED_FOLDERS_KEY,JSON.stringify(Array.from(deleted))); } catch (_) {}
 }
 function offlineDelete(url) {
   return openOfflineDb().then(function(db) { return new Promise(function(resolve) {
@@ -182,6 +194,7 @@ async function loadCatalog() {
 
     const seen = new Set();
     const deletedSongs = getDeletedSongs();
+    const deletedFolders = getDeletedFolders();
     songs = all.map(function(song, index) {
       const audioUrl = safeText(song.audioUrl || song.url).trim();
       const title = safeText(song.title || song.name).trim();
@@ -196,7 +209,7 @@ async function loadCatalog() {
         folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
         _index:index
       });
-    }).filter(Boolean).filter(function(song){ return !deletedSongs.has(song.audioUrl); }).map(function(song,index){ return Object.assign({},song,{_index:index}); });
+    }).filter(Boolean).filter(function(song){ return !deletedSongs.has(song.audioUrl) && !deletedFolders.has(song.folder); }).map(function(song,index){ return Object.assign({},song,{_index:index}); });
 
     if (!songs.length) throw new Error("Nenhuma faixa válida foi encontrada.");
     const counts = new Map();
@@ -237,11 +250,12 @@ async function loadCatalog() {
 }
 function renderFolders() {
   $("genreCards").innerHTML = folders.map(function(folder,index) {
-    return '<button class="folder-card" type="button" data-folder="' + escapeHtml(folder.name) + '" style="--folder-color:' + palettes[index % palettes.length] + '">' +
+    return '<div class="folder-card" data-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" style="--folder-color:' + palettes[index % palettes.length] + '">' +
+      '<button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button>' +
       '<span class="folder-art"><span>♫</span><i></i></span>' +
       '<span class="folder-name">' + escapeHtml(folder.name) + '</span>' +
       '<span class="folder-count">' + folder.count.toLocaleString("pt-BR") + (folder.count === 1 ? " música" : " músicas") + '</span>' +
-      '<span class="folder-arrow">▶</span><span class="folder-download" data-download-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" title="Baixar pasta" aria-label="Baixar pasta">⇩</span></button>';
+      '<span class="folder-arrow">▶</span><span class="folder-download" data-download-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" title="Baixar pasta" aria-label="Baixar pasta">⇩</span></div>';
   }).join("");
 }
 function safeFileName(value) {
@@ -356,6 +370,28 @@ function deleteCurrentSong() {
     if (folderToKeep && folders.some(function(folder){ return folder.name === folderToKeep; })) openFolder(folderToKeep,false);
     renderDrawer();
   });
+}
+function deleteFolder(folderName) {
+  const tracks = songs.filter(function(song){ return song.folder === folderName; });
+  if (!tracks.length) { showToast("Esta pasta já está vazia."); return; }
+  if (!window.confirm("Excluir a pasta “" + folderName + "” deste aparelho?\n\n" + tracks.length + " músicas serão removidas da lista e do armazenamento offline.\n\nOs arquivos originais do servidor não serão apagados.")) return;
+  rememberDeletedFolder(folderName);
+  tracks.forEach(function(song){ rememberDeletedSong(song.audioUrl); offlineDelete(song.audioUrl); });
+  if (activeFolder === folderName || (songs[currentIndex] && songs[currentIndex].folder === folderName)) {
+    requestId++;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    if (activeObjectUrl) { URL.revokeObjectURL(activeObjectUrl); activeObjectUrl = ""; }
+    currentIndex = -1;
+    queue = [];
+    activeFolder = "";
+  }
+  const remaining = songs.filter(function(song){ return song.folder !== folderName; })
+    .map(function(song,index){ return Object.assign({},song,{_index:index}); });
+  try { localStorage.setItem("music-catalog-v1",JSON.stringify(remaining)); } catch (_) {}
+  showToast("Pasta excluída deste aparelho");
+  loadCatalog();
 }
 function openPlayerDrawer() {
   renderDrawer();
@@ -515,12 +551,18 @@ function setVolume(value) {
   $("volume").value = String(value);
 }
 $("genreCards").addEventListener("click",function(event) {
+  const folderMenu = event.target.closest("[data-folder-menu]");
+  if (folderMenu) { event.preventDefault(); event.stopPropagation(); deleteFolder(folderMenu.dataset.folderMenu); return; }
   const download = event.target.closest("[data-download-folder]");
   if (download) { event.preventDefault(); event.stopPropagation(); downloadFolder(download.dataset.downloadFolder); return; }
   const retry = event.target.closest("#retryCatalog");
   if (retry) { loadCatalog(); return; }
   const card = event.target.closest("[data-folder]");
   if (card) openFolder(card.dataset.folder,true);
+});
+$("genreCards").addEventListener("keydown",function(event) {
+  const card = event.target.closest("[data-folder]");
+  if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openFolder(card.dataset.folder,true); }
 });
 $("backFoldersBtn").addEventListener("click",closeFolder);
 $("playFolderBtn").addEventListener("click",function(){if(queue.length)playSong(queue[0]);});
