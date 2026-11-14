@@ -7,6 +7,7 @@ const PAGE_SIZE = 100;
 const OFFLINE_DB = "music-offline-v2";
 let offlineDbPromise = null;
 let offlineSyncRunning = false;
+let activeObjectUrl = "";
 let songs = [];
 let folders = [];
 let activeFolder = "";
