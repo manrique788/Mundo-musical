@@ -595,6 +595,8 @@ body.in-folder .main-content{padding-top:20px}
 .marquee-track{display:inline-flex;width:max-content;gap:34px;animation:music-title-marquee 12s linear infinite;will-change:transform}
 .marquee-track>span{display:block;flex:0 0 auto}
 @keyframes music-title-marquee{from{transform:translateX(0)}to{transform:translateX(var(--marquee-distance))}}
+.player .track-meta strong{font-size:11px!important;line-height:1.25!important}
+.player-drawer .full-player-track strong{font-size:clamp(20px,5vw,28px)!important;line-height:1.2!important}
 .full-player-progress input,.full-player-volume input{width:100%;accent-color:#fff;cursor:pointer}
 .full-player-progress>div{display:flex;justify-content:space-between;margin-top:7px;color:#c2c9cb;font-size:12px;font-variant-numeric:tabular-nums}
 .full-player-main-controls{display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;gap:5px;margin:22px 0 24px}

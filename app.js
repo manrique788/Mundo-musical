@@ -50,7 +50,6 @@ function updateMarquee(element,text) {
   element.classList.remove("is-marquee");
   element.textContent = value;
   requestAnimationFrame(function() {
-    if (element.scrollWidth <= element.clientWidth + 2) return;
     element.classList.add("is-marquee");
     element.innerHTML = "<span class=\"marquee-track\"><span></span><span aria-hidden=\"true\"></span></span>";
     const spans = element.querySelectorAll(".marquee-track > span");
