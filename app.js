@@ -13,6 +13,7 @@ let activeObjectUrl = "";
 let songs = [];
 let folders = [];
 let activeFolder = "";
+let folderSearchTerm = "";
 let queue = [];
 let currentIndex = -1;
 let shuffleEnabled = false;
@@ -218,7 +219,13 @@ async function loadCatalog() {
   }
 }
 function renderFolders() {
-  $("genreCards").innerHTML = folders.map(function(folder,index) {
+  const filteredFolders = folders.filter(folder => folder.name.toLocaleLowerCase("pt-BR").includes(folderSearchTerm));
+  $("folderTotal").textContent = folderSearchTerm ? filteredFolders.length + " resultados" : folders.length.toLocaleString("pt-BR") + " estações";
+  if (!filteredFolders.length) {
+    $("genreCards").innerHTML = '<div class="loading-card">Nenhum estilo encontrado. Tente outra busca.</div>';
+    return;
+  }
+  $("genreCards").innerHTML = filteredFolders.map(function(folder,index) {
     return '<div class="folder-card" data-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" style="--folder-color:' + palettes[index % palettes.length] + '">' +
       '<div class="folder-menu-wrap"><button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button><div class="folder-menu-popover" data-folder-popover="' + escapeHtml(folder.name) + '" hidden><button type="button" data-delete-folder="' + escapeHtml(folder.name) + '">Excluir</button></div></div>' +
       '<span class="folder-art"><span>♫</span><i></i></span>' +
@@ -258,6 +265,7 @@ async function downloadFolder(folderName) {
 }
 function openFolder(name, shouldPlay) {
   activeFolder = name;
+  document.body.classList.add("in-folder");
   queue = songs.filter(song => song.folder === name).map(song => song._index);
   visibleLimit = PAGE_SIZE;
   $("folderView").hidden = false;
@@ -270,6 +278,7 @@ function openFolder(name, shouldPlay) {
 }
 function closeFolder() {
   $("folderView").hidden = true;
+  document.body.classList.remove("in-folder");
   $("genreCards").hidden = false;
   activeFolder = "";
   queue = [];
@@ -543,6 +552,10 @@ $("genreCards").addEventListener("keydown",function(event) {
   if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openFolder(card.dataset.folder,true); }
 });
 $("backFoldersBtn").addEventListener("click",closeFolder);
+$("folderSearch").addEventListener("input",function(event){
+  folderSearchTerm = safeText(event.target.value).trim().toLocaleLowerCase("pt-BR");
+  renderFolders();
+});
 $("playFolderBtn").addEventListener("click",function(){if(queue.length)playSong(queue[0]);});
 $("loadMoreSongs").addEventListener("click",function(){visibleLimit += PAGE_SIZE;renderSongList();});
 $("songList").addEventListener("click",function(event) {
