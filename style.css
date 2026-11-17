@@ -722,6 +722,6 @@ body{
 .player .player-controls #playBtn{background:linear-gradient(135deg,#54d8c3,#43a9a0)!important;color:#071210!important;box-shadow:0 0 22px #3da99b55!important}
 .player .progress-row{color:#a8beb8}.player .progress-row input{accent-color:#65d8c4!important}
 
-/* Play/pause do player inferior sem círculo colorido: somente o ícone */
-.player .player-controls .play-main{background:transparent!important;color:#c9d7e8!important;box-shadow:none!important;border:0!important;border-radius:0!important}
-.player .player-controls .play-main:hover{background:transparent!important;color:#79e4d0!important;transform:scale(1.08)}
+/* Player expandido: play/pause sem o círculo azul */
+.player-drawer .full-player-main-controls .full-player-play{background:transparent!important;color:#c9d7e8!important;box-shadow:none!important;border:0!important;border-radius:0!important}
+.player-drawer .full-player-main-controls .full-player-play:hover{background:transparent!important;color:#79e4d0!important;transform:scale(1.08)}
