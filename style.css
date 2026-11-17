@@ -605,3 +605,63 @@ body.in-folder .main-content{padding-top:20px}
 @media(min-width:700px){.player-drawer .music-player-panel{max-width:100%;}.full-player-content{width:min(100%,560px)}}
 @media(max-height:720px){.full-player-art{width:min(100%,42vh);margin-bottom:18px}.full-player-track{margin-bottom:12px}.full-player-main-controls{margin:12px 0 14px}.full-player-main-controls .full-player-play{width:68px;height:68px}}
 body.player-open{overflow:hidden}
+
+
+/* MUSIC v83 — paleta azul-petróleo do player; remove o amarelo/verde-limão */
+:root{
+ --bg:#101418;--panel:#17272e;--muted:#aebdc0;--text:#f2f6f5;
+ --line:rgba(220,239,238,.12);--accent:#8fb7b8;--accent2:#6f969b;
+}
+html{background:#101418}
+body{
+ background:
+ radial-gradient(ellipse at 12% 0%,rgba(111,150,155,.18),transparent 36%),
+ radial-gradient(ellipse at 90% 8%,rgba(76,119,128,.15),transparent 33%),
+ linear-gradient(180deg,#17272e 0%,#101418 58%,#0d1216 100%);
+ color:#f2f6f5;
+}
+.ambient-one{background:#8fb7b8;opacity:.10}
+.ambient-two{background:#4c7780;opacity:.13}
+.brand-mark{background:linear-gradient(145deg,#8fb7b8,#426a73);border:1px solid #a9c9c766;box-shadow:0 8px 30px #4c778044}
+.brand-mark:before{background:radial-gradient(circle at 50% 35%,#e4f1ef55,transparent 62%)}
+.brand-mark i{background:#17272e;box-shadow:none}
+.brand-name b,.top-status i,.eyebrow,.section-kicker{color:#a9c9c7}
+.top-status i{border-color:#8fb7b855;background:#8fb7b812}
+.live-dot{background:#9bc5bd;box-shadow:0 0 13px #9bc5bd}
+.radio-stage{background:linear-gradient(112deg,#263b43 0%,#1b3038 48%,#17272e 100%)}
+.radio-stage:before{background:radial-gradient(circle at 78% 40%,#8fb7b835,transparent 29%),radial-gradient(circle at 100% 0%,#4c778035,transparent 34%)}
+.radio-copy h1 em{background:linear-gradient(90deg,#d5e4df,#8fb7b8 55%,#6f969b);background-clip:text}
+.visual-ring{border-color:#8fb7b840;box-shadow:0 0 70px #8fb7b818,inset 0 0 50px #8fb7b80d}
+.visual-disc{border-color:#8fb7b877;color:#c6ded9;box-shadow:0 0 70px #8fb7b826,0 0 130px #4c778020}
+.visual-wave i{background:linear-gradient(#d5e4df,#8fb7b8)}
+.visual-caption{color:#a9c9c7}
+.library-search{color:#a9c9c7}
+.library-search:focus-within{border-color:#8fb7b888;box-shadow:0 0 0 3px #8fb7b812}
+.folder-card:hover{border-color:#8fb7b870}
+.folder-art{color:#c6ded9}
+.folder-arrow{background:#8fb7b8;color:#142127;box-shadow:0 5px 20px #8fb7b828}
+.folder-view{background:linear-gradient(145deg,#1b3038,#121c22)}
+.folder-play-all{background:linear-gradient(110deg,#a9c9c7,#6f969b);color:#122027;box-shadow:0 8px 28px #6f969b25}
+.song-row.playing{background:#8fb7b80c;border-color:#8fb7b835}
+.song-cover{background:linear-gradient(145deg,#3b5960,#17272e);border-color:#8fb7b822;color:#c6ded9}
+.song-play-icon{background:#8fb7b8;color:#142127}
+.load-more{border-color:#8fb7b855;background:#8fb7b810;color:#c6ded9}
+.player{background:rgba(19,31,36,.96)}
+.cover-small{background:linear-gradient(145deg,#3a5961,#17272e);border-color:#8fb7b845;color:#c6ded9}
+.player-controls button:hover,.player-controls button.active{color:#a9c9c7}
+.player-controls .play-main{background:linear-gradient(145deg,#d5e4df,#8fb7b8);color:#142127;box-shadow:0 5px 25px #8fb7b830}
+.player-controls .play-main:hover{background:#fff;color:#17272e}
+.progress-row input,.player-right input{accent-color:#8fb7b8}
+.folder-compact-controls button{color:#a9c9c7}
+.player-drawer .drawer-panel{background:radial-gradient(ellipse at 50% 0%,#8fb7b80c,transparent 45%),#17272e}
+.drawer-cover{box-shadow:0 0 45px #8fb7b81a}
+.drawer-queue-row.current{background:#8fb7b80d;border-color:#8fb7b835}
+.toast{border-color:#8fb7b844;background:#1b3038}
+.music-player-panel .drawer-cover{background:linear-gradient(145deg,#3a5961,#17272e);border-color:#8fb7b855;color:#c6ded9}
+.music-player-panel .drawer-track small{color:#a9c9c7}
+.simple-player-controls button:active,.simple-player-controls button.active{background:#8fb7b818;border-color:#8fb7b877;color:#c6ded9}
+.simple-track-controls button:last-child{background:#8fb7b8;color:#142127}
+.full-player-art{background:radial-gradient(circle at 25% 20%,#7a9b9e 0%,transparent 35%),radial-gradient(circle at 78% 72%,#4e777d 0%,transparent 32%),linear-gradient(145deg,#314f59,#14242b 55%,#0b151b)}
+.full-player-art:after{border-color:#8fb7b855}
+.full-player-main-controls button.active,.full-player-folder-controls button:active{color:#a9c9c7}
+.full-player-volume input{accent-color:#8fb7b8}
