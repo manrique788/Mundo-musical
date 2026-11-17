@@ -241,19 +241,14 @@ async function loadCatalog() {
 
     if (!songs.length) throw new Error("Nenhuma faixa válida foi encontrada.");
     const counts = new Map();
-    songs.forEach(song => counts.set(song.folder,(counts.get(song.folder)||0)+1));
+    const folderFirstSeen = new Map();
+    songs.forEach(function(song,index) {
+      counts.set(song.folder,(counts.get(song.folder)||0)+1);
+      if (!folderFirstSeen.has(song.folder)) folderFirstSeen.set(song.folder,index);
+    });
     folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
       .sort((a,b) => {
-        const priority = name => {
-          const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-          if (normalized === "funk" || (normalized.includes("funk") && !normalized.includes("mega") && !normalized.includes("eletro"))) return 0;
-          if (normalized.includes("mega funk")) return 1;
-          if (normalized.includes("eletro funk") || normalized.includes("eletrofunk")) return 2;
-          if (normalized.includes("flash back") || normalized.includes("flashback")) return 3;
-          return 4;
-        };
-        const difference = priority(a.name) - priority(b.name);
-        return difference || a.name.localeCompare(b.name,"pt-BR");
+        return (folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER);
       });
     renderFolders();
     try { localStorage.setItem("music-catalog-v1",JSON.stringify(songs)); } catch (_) {}
