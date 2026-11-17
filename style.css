@@ -712,3 +712,12 @@ body{
   .player-controls{position:static!important;left:auto!important;top:auto!important;transform:none!important;width:100%!important;grid-column:1!important;grid-row:2!important;justify-self:center!important;align-self:center!important;display:flex!important;justify-content:center!important;margin:0!important}
   .progress-row{grid-column:1!important;grid-row:3!important;position:static!important}
 }
+
+/* Player inferior: preto fosco com tom verde escuro, sem alterar o restante do site */
+.player{background:linear-gradient(180deg,#101b19 0%,#0b1412 58%,#08100f 100%)!important;border-top-color:#3c817766!important;box-shadow:0 -12px 42px rgba(0,18,12,.72)!important}
+.player .cover-small{background:linear-gradient(145deg,#1d403a,#10221f)!important;border-color:#4fa99a88!important;color:#79e4d0!important;box-shadow:0 0 18px #1d806633!important}
+.player .folder-compact-controls button{background:#101d1b!important;border-color:#34504b!important;color:#b7d1cb!important}
+.player .folder-compact-controls button:hover{background:#19332e!important;border-color:#58cbbb!important;color:#79e4d0!important}
+.player .player-controls button{color:#b7d1cb!important}.player .player-controls button:hover{color:#79e4d0!important}
+.player .player-controls #playBtn{background:linear-gradient(135deg,#54d8c3,#43a9a0)!important;color:#071210!important;box-shadow:0 0 22px #3da99b55!important}
+.player .progress-row{color:#a8beb8}.player .progress-row input{accent-color:#65d8c4!important}

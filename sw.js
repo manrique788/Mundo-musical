@@ -1,5 +1,5 @@
 const CACHE_NAME = 'music-premium-v82';
-const APP_SHELL = ['./','./index.html','./style.css?v=87','./app.js?v=87','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
+const APP_SHELL = ['./','./index.html','./style.css?v=88','./app.js?v=88','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
