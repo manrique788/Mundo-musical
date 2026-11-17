@@ -248,7 +248,14 @@ async function loadCatalog() {
     });
     folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
       .sort((a,b) => {
-        return (folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER);
+        const priority = function(name) {
+          const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+          if (normalized.includes("mega funk")) return 1;
+          if (normalized.includes("funk") && !normalized.includes("eletro")) return 0;
+          return 2;
+        };
+        return priority(a.name) - priority(b.name) ||
+          ((folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER));
       });
     renderFolders();
     try { localStorage.setItem("music-catalog-v1",JSON.stringify(songs)); } catch (_) {}
