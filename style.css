@@ -816,3 +816,40 @@ body{
     0 0 0 8px rgba(0,0,0,.2),
     0 0 28px rgba(70,227,208,.16)!important;
 }
+
+
+/* Player: remover o disco circular; manter apenas o ícone Play/Pause */
+.full-player-main-controls .full-player-play{
+  width:auto!important;
+  height:auto!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  padding:0 8px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#46e3d0!important;
+  box-shadow:none!important;
+  text-shadow:0 0 14px rgba(70,227,208,.22);
+  font-size:clamp(34px,8vw,46px)!important;
+  line-height:1!important;
+  filter:none!important;
+  transform:none!important;
+}
+.full-player-main-controls .full-player-play::before{
+  content:none!important;
+  display:none!important;
+}
+.full-player-main-controls .full-player-play:hover,
+.full-player-main-controls .full-player-play:active{
+  background:transparent!important;
+  color:#8af5e8!important;
+  box-shadow:none!important;
+  filter:brightness(1.12)!important;
+  transform:scale(1.08)!important;
+}
+.full-player-main-controls .full-player-play:focus-visible{
+  outline:2px solid #46e3d0;
+  outline-offset:5px;
+  border-radius:5px!important;
+}
