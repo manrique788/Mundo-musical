@@ -17,7 +17,7 @@ let folderSearchTerm = "";
 let queue = [];
 let currentIndex = -1;
 let shuffleEnabled = false;
-let repeatMode = "off";
+
 let visibleLimit = PAGE_SIZE;
 let requestId = 0;
 let toastTimer = 0;
@@ -310,18 +310,9 @@ function renderDrawer() {
   if (deleteButton) deleteButton.disabled = !current;
   $("drawerArtist").textContent = current ? current.artist : "Escolha uma pasta para começar";
   $("drawerFolder").textContent = activeFolder || "Nenhuma pasta";
-  $("drawerQueueCount").textContent = queue.length.toLocaleString("pt-BR") + (queue.length === 1 ? " música" : " músicas");
   $("drawerShuffleBtn").classList.toggle("active",shuffleEnabled);
   $("drawerShuffleBtn").setAttribute("aria-pressed",String(shuffleEnabled));
-  $("drawerShuffleBtn").innerHTML = "⤨ <span>Aleatório " + (shuffleEnabled ? "ligado" : "desligado") + "</span>";
-  $("drawerQueue").innerHTML = queue.map(function(songIndex,position) {
-    const song = songs[songIndex];
-    const isCurrent = songIndex === currentIndex;
-    return '<button type="button" class="drawer-queue-row ' + (isCurrent ? "current" : "") + '" data-queue-index="' + songIndex + '">' +
-      '<span class="drawer-queue-number">' + (isCurrent && !audio.paused ? "♫" : String(position+1).padStart(2,"0")) + '</span>' +
-      '<span class="drawer-queue-info"><strong>' + escapeHtml(song.title) + '</strong><small>' + escapeHtml(song.artist) + '</small></span>' +
-      '<span class="drawer-queue-state">' + (isCurrent && !audio.paused ? "TOCANDO" : "▶") + '</span></button>';
-  }).join("") || '<div class="drawer-empty">Abra uma pasta para ver as músicas da fila.</div>';
+  $("drawerShuffleBtn").innerHTML = "⤨ <span>" + (shuffleEnabled ? "Aleatório ligado" : "Aleatório desligado") + "</span>";
 }
 function deleteCurrentSong() {
   const song = songs[currentIndex];
@@ -392,7 +383,6 @@ function switchFolder(direction) {
 function currentQueuePosition() { return queue.indexOf(currentIndex); }
 function nextSongIndex(direction) {
   if (!queue.length) return -1;
-  if (repeatMode === "one" && direction > 0) return currentIndex;
   if (shuffleEnabled && direction > 0 && queue.length > 1) {
     const options = queue.filter(index => index !== currentIndex);
     return options[Math.floor(Math.random()*options.length)];
@@ -400,8 +390,8 @@ function nextSongIndex(direction) {
   let pos = currentQueuePosition();
   if (pos < 0) pos = direction > 0 ? -1 : 0;
   let next = pos + direction;
-  if (next >= queue.length) return repeatMode === "all" ? queue[0] : -1;
-  if (next < 0) return repeatMode === "all" ? queue[queue.length-1] : queue[0];
+  if (next >= queue.length) return -1;
+  if (next < 0) return queue[0];
   return queue[next];
 }
 function playSong(index) {
@@ -414,7 +404,7 @@ function playSong(index) {
   audio.volume = Number($("volume").value || 0.8);
   $("currentTitle").textContent = song.title; $("currentArtist").textContent = song.artist; $("currentCover").innerHTML = "<span>♫</span>"; $("playBtn").textContent = "Ⅱ";
   if (!history.includes(index)) history.unshift(index); if (history.length > 30) history.pop();
-  updateMediaMetadata(song); renderSongListIfOpen();
+  updateMediaMetadata(song); renderSongListIfOpen(); openPlayerDrawer();
   if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
   activeObjectUrl = "";
 
@@ -521,8 +511,7 @@ function updateButtons() {
   const playing = !audio.paused && !audio.ended;
   $("playBtn").textContent = playing ? "Ⅱ" : "▶";
   $("shuffleBtn").classList.toggle("active",shuffleEnabled);
-  $("repeatBtn").classList.toggle("active",repeatMode !== "off");
-  $("repeatBtn").textContent = repeatMode === "one" ? "↻¹" : "↻";
+
 }
 function setVolume(value) {
   audio.volume = Number(value);
@@ -545,11 +534,11 @@ $("genreCards").addEventListener("click",function(event) {
   const retry = event.target.closest("#retryCatalog");
   if (retry) { loadCatalog(); return; }
   const card = event.target.closest("[data-folder]");
-  if (card) openFolder(card.dataset.folder,true);
+  if (card) openFolder(card.dataset.folder,false);
 });
 $("genreCards").addEventListener("keydown",function(event) {
   const card = event.target.closest("[data-folder]");
-  if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openFolder(card.dataset.folder,true); }
+  if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openFolder(card.dataset.folder,false); }
 });
 $("backFoldersBtn").addEventListener("click",closeFolder);
 $("folderSearch").addEventListener("input",function(event){
@@ -576,22 +565,16 @@ $("drawerShuffleBtn").addEventListener("click",function(){
 });
 $("drawerPrevFolderBtn").addEventListener("click",function(){switchFolder(-1);});
 $("drawerNextFolderBtn").addEventListener("click",function(){switchFolder(1);});
-$("deleteCurrentBtn").addEventListener("click",deleteCurrentSong);
+
 $("prevFolderCompactBtn").addEventListener("click",function(){switchFolder(-1);});
 $("nextFolderCompactBtn").addEventListener("click",function(){switchFolder(1);});
-$("drawerQueue").addEventListener("click",function(event){
-  const row = event.target.closest("[data-queue-index]");
-  if (row) playSong(Number(row.dataset.queueIndex));
-});
+$("drawerPrevSongBtn").addEventListener("click",function(){skip(-1);});
+$("drawerNextSongBtn").addEventListener("click",function(){skip(1);});
 $("playBtn").addEventListener("click",togglePlay);
 $("prevBtn").addEventListener("click",function(){skip(-1);});
 $("nextBtn").addEventListener("click",function(){skip(1);});
 $("shuffleBtn").addEventListener("click",function(){shuffleEnabled = !shuffleEnabled;updateButtons();showToast(shuffleEnabled ? "Aleatório ativado" : "Aleatório desativado");});
-$("repeatBtn").addEventListener("click",function(){
-  repeatMode = repeatMode === "off" ? "all" : repeatMode === "all" ? "one" : "off";
-  updateButtons();
-  showToast(repeatMode === "off" ? "Repetição desligada" : repeatMode === "all" ? "Repetir pasta" : "Repetir música");
-});
+
 $("volume").addEventListener("input",event => setVolume(event.target.value));
 $("progress").addEventListener("input",function(event) {
   if (audio.duration) audio.currentTime = audio.duration * Number(event.target.value) / 100;
@@ -604,7 +587,6 @@ audio.addEventListener("timeupdate",function() {
   $("progress").style.setProperty("--progress-percent",percent + "%");
 });
 audio.addEventListener("ended",function() {
-  if (repeatMode === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
   skip(1);
 });
 audio.addEventListener("play",function(){updateButtons();updateMediaState("playing");renderSongListIfOpen();});
