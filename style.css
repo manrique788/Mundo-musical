@@ -234,3 +234,161 @@ button{font:inherit}
 
 /* Linha sempre fixa no topo da janela, independente da rolagem */
 .offline-progress{position:fixed!important;top:0!important;left:0!important;right:0!important;width:100vw!important;height:3px!important;z-index:10000!important}
+
+
+/* =========================================================
+   MUNDO MUSICAL — NEON FUTURISTA (camada visual v71)
+   Mantém os componentes e IDs usados pelo player existente.
+   ========================================================= */
+:root{
+ --bg:#070510;--panel:#100c20;--muted:#9b91b8;--text:#f8f5ff;
+ --cyan:#35f4e5;--blue:#4d8dff;--line:rgba(180,139,255,.16);
+ --neon-purple:#a855f7;--neon-pink:#f044c8;
+}
+html{background:#070510}
+body{
+ background:
+ radial-gradient(ellipse at 8% -8%,rgba(113,40,211,.25),transparent 37%),
+ radial-gradient(ellipse at 92% 14%,rgba(0,214,255,.13),transparent 32%),
+ linear-gradient(180deg,#090615 0%,#070510 65%,#0b0716 100%);
+ color:var(--text)
+}
+.ambient-one{background:#9b35ff;opacity:.2}
+.ambient-two{background:#00d9ff;opacity:.15}
+.app-shell{max-width:1440px;padding-left:clamp(16px,4vw,54px);padding-right:clamp(16px,4vw,54px)}
+.topbar{height:78px;border-bottom-color:rgba(174,113,255,.2)}
+.brand-mark{
+ background:linear-gradient(145deg,#1a0c35,#080b1c);
+ border:1px solid rgba(174,93,255,.65);
+ box-shadow:0 0 22px rgba(168,85,247,.25),inset 0 0 18px rgba(42,226,255,.1)
+}
+.brand-mark i{background:linear-gradient(180deg,#67fff1,#a855f7);box-shadow:0 0 10px #8d5bff}
+.brand-name{font-size:16px;letter-spacing:1.1px}
+.brand-name b{color:#48f5e5;margin-left:3px;text-shadow:0 0 16px #28d9ff66}
+.top-status{color:#c8bce0}
+.top-status i{color:#49f6e5;border-color:#42f4e544;background:#2df3e50b}
+.live-dot{background:#46f5e4;box-shadow:0 0 13px #46f5e4}
+.radio-stage{
+ border:1px solid rgba(168,85,247,.25);
+ background:linear-gradient(115deg,rgba(22,13,43,.96),rgba(9,19,37,.96) 58%,rgba(25,10,40,.96));
+ box-shadow:0 24px 80px #0008,0 0 45px rgba(125,55,255,.08)
+}
+.radio-copy h1 em{background:linear-gradient(90deg,#43f5e5,#6b8cff 55%,#e45bff);background-clip:text}
+.eyebrow,.section-kicker{color:#55f5e8}
+.visual-ring{border-color:#41f1ed44;box-shadow:0 0 65px #1f9ac52c,inset 0 0 45px #168cb522}
+.ring-b{border-color:#c15bff55}
+.visual-disc{border-color:#64f7f077;box-shadow:0 0 55px #31c8d355,0 0 100px #9a42ff22;color:#64fff1}
+.visual-wave i{background:linear-gradient(#55fff0,#a855f7)}
+.section-heading h2,.folder-heading-copy h2{color:#fbf8ff}
+.folder-grid{gap:17px}
+.folder-card{
+ min-height:190px;border:1px solid rgba(174,121,255,.2);
+ background:linear-gradient(145deg,color-mix(in srgb,var(--folder-color),#170d2d 42%),#0c0a19 83%);
+ box-shadow:inset 0 1px rgba(255,255,255,.045),0 12px 32px rgba(0,0,0,.2)
+}
+.folder-card:before{opacity:.58;filter:blur(34px)}
+.folder-card:hover{
+ transform:translateY(-5px);border-color:rgba(63,245,232,.7);
+ box-shadow:0 14px 38px #0008,0 0 24px rgba(65,237,228,.13)
+}
+.folder-art{
+ background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(139,75,255,.12));
+ border-color:rgba(106,245,239,.25);box-shadow:0 0 24px rgba(93,89,255,.16)
+}
+.folder-name{text-shadow:0 2px 15px #000}
+.folder-count{color:#c0b4d8}
+.folder-arrow{background:rgba(44,244,227,.1);color:#51f7e9;border:1px solid rgba(68,245,230,.2)}
+.folder-view{
+ margin-top:28px;border:1px solid rgba(160,103,255,.24);
+ border-radius:22px;background:linear-gradient(145deg,rgba(17,11,32,.97),rgba(8,12,25,.97));
+ box-shadow:0 20px 60px #0006
+}
+.folder-view-head{border-bottom:1px solid rgba(171,120,255,.13);padding-bottom:18px}
+.back-button,.folder-play-all{
+ border:1px solid rgba(172,124,255,.25);background:rgba(255,255,255,.045);color:#eee8ff
+}
+.back-button:hover{border-color:#4bf4e7;color:#5af8eb}
+.folder-play-all{
+ border:1px solid rgba(84,255,236,.55);
+ background:linear-gradient(105deg,#45f3e5,#7b7cff 60%,#c05bff);
+ color:#090719;box-shadow:0 0 24px rgba(70,232,236,.2)
+}
+.song-row{border-radius:12px}
+.song-row:hover{background:rgba(139,92,246,.1);border-color:rgba(171,117,255,.16)}
+.song-row.playing{background:linear-gradient(90deg,rgba(46,245,224,.1),rgba(157,83,255,.08));border-color:rgba(66,244,228,.35)}
+.song-cover{border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 0 18px #ffffff10}
+.song-play-icon{background:rgba(65,244,229,.08);border:1px solid rgba(65,244,229,.15);color:#5af5e8}
+.load-more{border-color:#4df3e655;background:rgba(65,244,229,.08);color:#5af5e8}
+.player{
+ min-height:108px;grid-template-columns:minmax(190px,1fr) minmax(280px,1.3fr) minmax(100px,.5fr);
+ border-top:1px solid rgba(102,242,232,.25);
+ background:rgba(7,5,17,.94);box-shadow:0 -12px 55px rgba(0,0,0,.62),0 -1px 18px rgba(73,236,226,.06)
+}
+.cover-small{background:linear-gradient(145deg,#27205a,#10182f);border:1px solid #54f4e477;color:#64fff0;box-shadow:0 0 20px #7d48ff22}
+.player-controls button{color:#b6a9d1}
+.player-controls button:hover,.player-controls button.active{color:#54f5e8;text-shadow:0 0 12px #54f5e866}
+.player-controls .play-main{
+ background:linear-gradient(145deg,#5af6e9,#a36bff);color:#090719;
+ box-shadow:0 0 22px rgba(77,240,226,.3),0 0 38px rgba(168,85,247,.16)
+}
+.player-controls .play-main:hover{background:#fff;color:#4a28a0}
+.progress-row input,.player-right input{accent-color:#55f5e8}
+.player-right{color:#b8afd0}
+.folder-compact-controls button{
+ border:1px solid rgba(168,112,255,.24);background:rgba(255,255,255,.04);
+ color:#c9c0df;border-radius:9px
+}
+.folder-compact-controls button:hover{color:#55f5e8;border-color:#55f5e866}
+.player-drawer .drawer-panel{
+ background:radial-gradient(ellipse at 50% 0%,rgba(107,48,179,.2),transparent 45%),#0c0918;
+ border:1px solid rgba(157,100,255,.25)
+}
+.drawer-cover{box-shadow:0 0 45px rgba(64,242,226,.13)}
+.drawer-queue-row.current{background:rgba(57,240,222,.1);border-color:rgba(57,240,222,.25)}
+.toast{border-color:rgba(75,243,228,.25);background:#17102a;box-shadow:0 10px 35px #000b,0 0 20px #a855f722}
+.offline-progress{background:#a855f7}
+.offline-progress-fill{background:linear-gradient(90deg,#45f5e5,#9a65ff,#ed59ce)}
+/* A página inicial fica focada nas pastas; estatísticas decorativas não ocupam espaço. */
+.radio-stage,.section-heading,.site-footer{display:none!important}
+.folder-grid{margin-top:26px}
+.folder-view-head .section-kicker{display:none}
+@media(max-width:900px){
+ .app-shell{padding-left:16px;padding-right:16px}
+ .folder-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:18px}
+ .folder-card{min-height:150px;padding:14px;border-radius:16px}
+ .folder-art{width:54px;height:54px;right:13px;top:13px;border-radius:15px;font-size:29px}
+ .folder-name{font-size:15px;max-width:85%}
+ .folder-count{font-size:10px}
+ .folder-view{padding:15px;margin-top:18px}
+ .folder-view-head{grid-template-columns:auto 1fr;gap:10px}
+ .folder-play-all{grid-column:1/-1;width:100%}
+}
+@media(max-width:560px){
+ body{padding-bottom:145px}
+ .topbar{height:68px}
+ .brand-mark{width:37px;height:37px;border-radius:12px}
+ .brand-name{font-size:14px}
+ .top-status{font-size:8px;gap:6px;letter-spacing:1px}
+ .player{
+  min-height:138px;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;
+  padding:9px 12px calc(9px + env(safe-area-inset-bottom))
+ }
+ .player-track{grid-column:1/-1;gap:9px}
+ .cover-small{width:42px;height:42px;flex-basis:42px;border-radius:10px;font-size:24px}
+ .track-meta strong{font-size:12px}
+ .track-meta span{font-size:10px}
+ .player-center{grid-column:1/-1;grid-row:2;max-width:none}
+ .player-controls{gap:27px;margin-bottom:4px}
+ .player-controls button{font-size:18px}
+ .player-controls .play-main{width:38px;height:38px}
+ .progress-row{gap:7px;font-size:9px}
+ .player-right{display:none}
+ .folder-compact-controls{margin-left:auto}
+ .folder-compact-controls button{width:29px;height:29px}
+ .song-row{gap:9px;padding:9px 7px}
+ .song-cover{width:38px;height:38px;flex-basis:38px}
+ .song-info strong{font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
+}
