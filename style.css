@@ -237,7 +237,7 @@ button{font:inherit}
 
 
 /* =========================================================
-   MUNDO MUSICAL — NEON FUTURISTA (camada visual v71)
+   MUSIC — NEON FUTURISTA (camada visual v71)
    Mantém os componentes e IDs usados pelo player existente.
    ========================================================= */
 :root{
@@ -591,6 +591,10 @@ body.in-folder .main-content{padding-top:20px}
 .full-player-track{display:flex;flex-direction:column;gap:5px;margin:0 0 22px}
 .full-player-track strong{font-size:clamp(21px,5vw,28px);font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .full-player-track span{font-size:clamp(15px,3.8vw,19px);color:#c3c9cc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track-meta strong.is-marquee,.full-player-track strong.is-marquee{display:block;overflow:hidden;text-overflow:clip;white-space:nowrap}
+.marquee-track{display:inline-flex;width:max-content;gap:34px;animation:music-title-marquee 12s linear infinite;will-change:transform}
+.marquee-track>span{display:block;flex:0 0 auto}
+@keyframes music-title-marquee{from{transform:translateX(0)}to{transform:translateX(var(--marquee-distance))}}
 .full-player-progress input,.full-player-volume input{width:100%;accent-color:#fff;cursor:pointer}
 .full-player-progress>div{display:flex;justify-content:space-between;margin-top:7px;color:#c2c9cb;font-size:12px;font-variant-numeric:tabular-nums}
 .full-player-main-controls{display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;gap:5px;margin:22px 0 24px}

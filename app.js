@@ -40,6 +40,24 @@ function formatTime(value) {
   const secs = Math.floor(value % 60);
   return mins + ":" + String(secs).padStart(2,"0");
 }
+function displayArtist(value) {
+  const artist = safeText(value || "Music").trim();
+  return /mundo\s+musical/i.test(artist) ? "Music" : artist;
+}
+function updateMarquee(element,text) {
+  if (!element) return;
+  const value = safeText(text);
+  element.classList.remove("is-marquee");
+  element.textContent = value;
+  requestAnimationFrame(function() {
+    if (element.scrollWidth <= element.clientWidth + 2) return;
+    element.classList.add("is-marquee");
+    element.innerHTML = "<span class=\"marquee-track\"><span></span><span aria-hidden=\"true\"></span></span>";
+    const spans = element.querySelectorAll(".marquee-track > span");
+    spans.forEach(function(span){ span.textContent = value; });
+    element.style.setProperty("--marquee-distance", "-" + Math.ceil(spans[0].scrollWidth + 34) + "px");
+  });
+}
 function folderFromSong(song) {
   if (song.genre && song.audioUrl) {
     try {
@@ -232,7 +250,7 @@ async function loadCatalog() {
       seen.add(key);
       return Object.assign({}, song, {
         title:title,
-        artist:safeText(song.artist || "Music"),
+        artist:displayArtist(song.artist || "Music"),
         audioUrl:audioUrl,
         folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
         _index:index
@@ -365,8 +383,8 @@ function renderDrawer() {
   const title = $("drawerTitle");
   if (!title) return;
   const current = songs[currentIndex];
-  title.textContent = current ? current.title : "Nenhuma música selecionada";
-  $("drawerArtist").textContent = current ? current.artist : "Escolha uma música para começar";
+  updateMarquee(title,current ? current.title : "Nenhuma música selecionada");
+  $("drawerArtist").textContent = current ? displayArtist(current.artist) : "Escolha uma música para começar";
   $("drawerFolder").textContent = activeFolder || "Sua música";
   $("drawerShuffleBtn").classList.toggle("active",shuffleEnabled);
   $("drawerShuffleBtn").setAttribute("aria-pressed",String(shuffleEnabled));
@@ -468,7 +486,7 @@ function playSong(index) {
   if (!queue.includes(index)) { activeFolder = song.folder; queue = songs.filter(item => item.folder === activeFolder).map(item => item._index); }
   audio.pause();
   audio.volume = Number($("volume").value || 0.8);
-  $("currentTitle").textContent = song.title; $("currentArtist").textContent = song.artist; $("currentCover").innerHTML = "<span>♫</span>"; $("playBtn").textContent = "Ⅱ";
+  updateMarquee($("currentTitle"),song.title); $("currentArtist").textContent = displayArtist(song.artist); $("currentCover").innerHTML = "<span>♫</span>"; $("playBtn").textContent = "Ⅱ";
   if (!history.includes(index)) history.unshift(index); if (history.length > 30) history.pop();
   updateMediaMetadata(song); renderSongListIfOpen(); openPlayerDrawer();
   if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
