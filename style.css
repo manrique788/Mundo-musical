@@ -679,3 +679,15 @@ body{
 .full-player-play{background:linear-gradient(135deg,#46e3d0,#4b9cff)!important;color:#06131f!important;box-shadow:0 0 28px #46e3d055!important}
 .full-player-main-controls button:hover,.full-player-main-controls button.active{color:#46e3d0!important}
 .full-player-progress input{accent-color:#46e3d0}
+
+/* Ajuste final: player inferior alinhado ao player completo */
+.player{background:linear-gradient(145deg,#172b4a,#0b111d 68%,#171132 100%);border-top-color:#46e3d066}
+.player-controls{justify-self:center;margin-inline:auto}
+.player-controls .play-main{background:linear-gradient(135deg,#46e3d0,#4b9cff)!important;color:#06131f!important;box-shadow:0 0 24px #46e3d055!important}
+.player-controls button:hover,.player-controls button.active{color:#46e3d0!important}
+.progress-row input{accent-color:#46e3d0!important}
+.full-player-progress input,.full-player-volume input{accent-color:#46e3d0!important}
+.full-player-main-controls button.active,.full-player-folder-controls button:active{color:#46e3d0!important}
+.full-player-main-controls .full-player-play{background:linear-gradient(135deg,#46e3d0,#4b9cff)!important;color:#06131f!important;box-shadow:0 8px 28px #46e3d055!important}
+.full-player-main-controls .full-player-play:hover{background:linear-gradient(135deg,#71f5e4,#73b6ff)!important}
+@media(max-width:650px){.player-controls{width:100%!important;justify-content:center!important;margin-left:auto!important;margin-right:auto!important}.player{background:linear-gradient(145deg,#172b4a,#0b111d 68%,#171132 100%)!important}}
