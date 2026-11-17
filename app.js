@@ -8,6 +8,7 @@ const OFFLINE_DB = "music-offline-v2";
 const DELETED_SONGS_KEY = "music-deleted-songs-v1";
 const DELETED_FOLDERS_KEY = "music-deleted-folders-v1";
 const RENAMED_FOLDERS_KEY = "music-renamed-folders-v1";
+const FOLDER_HISTORY_KEY = "music-folder-history-v1";
 let offlineDbPromise = null;
 let offlineSyncRunning = false;
 let activeObjectUrl = "";
@@ -112,6 +113,15 @@ function getRenamedFolders() {
 }
 function saveRenamedFolders(renames) {
   try { localStorage.setItem(RENAMED_FOLDERS_KEY,JSON.stringify(renames)); } catch (_) {}
+}
+function getFolderHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FOLDER_HISTORY_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch (_) { return []; }
+}
+function saveFolderHistory(names) {
+  try { localStorage.setItem(FOLDER_HISTORY_KEY,JSON.stringify(names)); } catch (_) {}
 }
 function offlineDelete(url) {
   return openOfflineDb().then(function(db) { return new Promise(function(resolve) {
@@ -259,10 +269,18 @@ async function loadCatalog() {
       counts.set(song.folder,(counts.get(song.folder)||0)+1);
       if (!folderFirstSeen.has(song.folder)) folderFirstSeen.set(song.folder,index);
     });
+    const previousFolderOrder = getFolderHistory();
+    const previousFolderSet = new Set(previousFolderOrder);
     folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
       .sort((a,b) => {
+        const aIsNew = previousFolderSet.has(a.name) ? 1 : 0;
+        const bIsNew = previousFolderSet.has(b.name) ? 1 : 0;
+        if (aIsNew !== bIsNew) return aIsNew - bIsNew;
+        if (aIsNew === 1) return previousFolderOrder.indexOf(a.name) - previousFolderOrder.indexOf(b.name);
         return (folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER);
       });
+    const currentFolderNames = folders.map(folder => folder.name);
+    saveFolderHistory(previousFolderOrder.filter(name => currentFolderNames.includes(name)).concat(currentFolderNames.filter(name => !previousFolderSet.has(name))));
     renderFolders();
     try { localStorage.setItem("music-catalog-v1",JSON.stringify(songs)); } catch (_) {}
     offlineStatus("Preparando músicas offline…");
