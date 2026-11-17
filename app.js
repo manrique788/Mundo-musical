@@ -7,6 +7,7 @@ const PAGE_SIZE = 100;
 const OFFLINE_DB = "music-offline-v2";
 const DELETED_SONGS_KEY = "music-deleted-songs-v1";
 const DELETED_FOLDERS_KEY = "music-deleted-folders-v1";
+const RENAMED_FOLDERS_KEY = "music-renamed-folders-v1";
 let offlineDbPromise = null;
 let offlineSyncRunning = false;
 let activeObjectUrl = "";
@@ -102,6 +103,15 @@ function rememberDeletedFolder(name) {
   const deleted = getDeletedFolders();
   deleted.add(name);
   try { localStorage.setItem(DELETED_FOLDERS_KEY,JSON.stringify(Array.from(deleted))); } catch (_) {}
+}
+function getRenamedFolders() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RENAMED_FOLDERS_KEY) || "{}");
+    return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  } catch (_) { return {}; }
+}
+function saveRenamedFolders(renames) {
+  try { localStorage.setItem(RENAMED_FOLDERS_KEY,JSON.stringify(renames)); } catch (_) {}
 }
 function offlineDelete(url) {
   return openOfflineDb().then(function(db) { return new Promise(function(resolve) {
@@ -223,6 +233,7 @@ async function loadCatalog() {
     const seen = new Set();
     const deletedSongs = getDeletedSongs();
     const deletedFolders = getDeletedFolders();
+    const renamedFolders = getRenamedFolders();
     songs = all.map(function(song, index) {
       const audioUrl = safeText(song.audioUrl || song.url).trim();
       const title = safeText(song.title || song.name).trim();
@@ -230,11 +241,13 @@ async function loadCatalog() {
       const key = audioUrl;
       if (seen.has(key)) return null;
       seen.add(key);
+      const sourceFolder = folderFromSong(Object.assign({},song,{audioUrl:audioUrl}));
       return Object.assign({}, song, {
         title:title,
         artist:safeText(song.artist || "Music"),
         audioUrl:audioUrl,
-        folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
+        _sourceFolder:sourceFolder,
+        folder:safeText(renamedFolders[sourceFolder] || sourceFolder),
         _index:index
       });
     }).filter(Boolean).filter(function(song){ return !deletedSongs.has(song.audioUrl) && !deletedFolders.has(song.folder); }).map(function(song,index){ return Object.assign({},song,{_index:index}); });
@@ -280,7 +293,7 @@ function renderFolders() {
   }
   $("genreCards").innerHTML = filteredFolders.map(function(folder,index) {
     return '<div class="folder-card" data-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" style="--folder-color:' + palettes[index % palettes.length] + '">' +
-      '<div class="folder-menu-wrap"><button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button><div class="folder-menu-popover" data-folder-popover="' + escapeHtml(folder.name) + '" hidden><button type="button" data-delete-folder="' + escapeHtml(folder.name) + '">Excluir</button></div></div>' +
+      '<div class="folder-menu-wrap"><button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button><div class="folder-menu-popover" data-folder-popover="' + escapeHtml(folder.name) + '" hidden><button type="button" data-edit-folder="' + escapeHtml(folder.name) + '">Editar nome</button><button type="button" data-delete-folder="' + escapeHtml(folder.name) + '">Excluir</button></div></div>' +
       '<span class="folder-art"><span>♫</span><i></i></span>' +
       '<span class="folder-name">' + escapeHtml(folder.name) + '</span>' +
       '<span class="folder-count">' + folder.count.toLocaleString("pt-BR") + (folder.count === 1 ? " música" : " músicas") + '</span>' +
@@ -420,6 +433,29 @@ function deleteFolder(folderName) {
   try { localStorage.setItem("music-catalog-v1",JSON.stringify(remaining)); } catch (_) {}
   showToast("Pasta excluída deste aparelho");
   loadCatalog();
+}
+function renameFolder(folderName) {
+  const tracks = songs.filter(function(song){ return song.folder === folderName; });
+  if (!tracks.length) { showToast("Esta pasta já está vazia."); return; }
+  const newName = window.prompt("Digite o novo nome da pasta:",folderName);
+  if (newName === null) return;
+  const trimmed = newName.trim().replace(/\s+/g," ").slice(0,80);
+  if (!trimmed) { showToast("Digite um nome válido."); return; }
+  if (trimmed === folderName) return;
+  if (folders.some(function(folder){ return folder.name === trimmed; })) {
+    showToast("Já existe uma pasta com esse nome.");
+    return;
+  }
+  const renames = getRenamedFolders();
+  tracks.forEach(function(song){ renames[song._sourceFolder || folderName] = trimmed; });
+  saveRenamedFolders(renames);
+  if (activeFolder === folderName) activeFolder = trimmed;
+  const updated = songs.map(function(song){
+    return song.folder === folderName ? Object.assign({},song,{folder:trimmed}) : song;
+  });
+  try { localStorage.setItem("music-catalog-v1",JSON.stringify(updated)); } catch (_) {}
+  showToast("Nome da pasta atualizado");
+  loadCatalog().then(function(){ renderDrawer(); });
 }
 function openPlayerDrawer() {
   renderDrawer();
@@ -577,6 +613,8 @@ function setVolume(value) {
   $("volume").value = String(value);
 }
 $("genreCards").addEventListener("click",function(event) {
+  const editFolderAction = event.target.closest("[data-edit-folder]");
+  if (editFolderAction) { event.preventDefault(); event.stopPropagation(); renameFolder(editFolderAction.dataset.editFolder); return; }
   const deleteFolderAction = event.target.closest("[data-delete-folder]");
   if (deleteFolderAction) { event.preventDefault(); event.stopPropagation(); deleteFolder(deleteFolderAction.dataset.deleteFolder); return; }
   const folderMenu = event.target.closest("[data-folder-menu]");
