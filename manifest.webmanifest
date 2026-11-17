@@ -1,6 +1,6 @@
 {
-  "name": "Mundo Musical",
-  "short_name": "Mundo Musical",
+  "name": "Music",
+  "short_name": "Music",
   "description": "Sua biblioteca musical em uma experiência neon.",
   "lang": "pt-BR",
   "start_url": "./",

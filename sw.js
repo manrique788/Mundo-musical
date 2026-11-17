@@ -1,5 +1,5 @@
-const CACHE_NAME = 'mundo-musical-neon-v71';
-const APP_SHELL = ['./','./index.html','./style.css?v=71','./app.js?v=71','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
+const CACHE_NAME = 'music-neon-v72';
+const APP_SHELL = ['./','./index.html','./style.css?v=72','./app.js?v=72','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
