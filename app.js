@@ -23,6 +23,10 @@ let requestId = 0;
 let toastTimer = 0;
 const history = [];
 const palettes = ["#263f70","#50326f","#155c67","#70432d","#3b4e86","#32664e","#74405c","#315b79"];
+const FAVORITES_KEY = "music-favorites-v1";
+function getFavorites(){try{return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY)||"[]"));}catch(_){return new Set();}}
+function isFavorite(song){return !!song && getFavorites().has(song.audioUrl);}
+function toggleFavorite(){const song=songs[currentIndex];if(!song)return;const favorites=getFavorites();if(favorites.has(song.audioUrl))favorites.delete(song.audioUrl);else favorites.add(song.audioUrl);try{localStorage.setItem(FAVORITES_KEY,JSON.stringify(Array.from(favorites)));}catch(_){}renderDrawer();showToast(favorites.has(song.audioUrl)?"Adicionada aos favoritos":"Removida dos favoritos");}
 
 function safeText(value) { return String(value == null ? "" : value); }
 function escapeHtml(value) {
@@ -306,13 +310,19 @@ function renderDrawer() {
   if (!title) return;
   const current = songs[currentIndex];
   title.textContent = current ? current.title : "Nenhuma música selecionada";
-  const deleteButton = $("deleteCurrentBtn");
-  if (deleteButton) deleteButton.disabled = !current;
-  $("drawerArtist").textContent = current ? current.artist : "Escolha uma pasta para começar";
-  $("drawerFolder").textContent = activeFolder || "Nenhuma pasta";
+  $("drawerArtist").textContent = current ? current.artist : "Escolha uma música para começar";
+  $("drawerFolder").textContent = activeFolder || "Sua música";
   $("drawerShuffleBtn").classList.toggle("active",shuffleEnabled);
   $("drawerShuffleBtn").setAttribute("aria-pressed",String(shuffleEnabled));
-  $("drawerShuffleBtn").innerHTML = "⤨ <span>" + (shuffleEnabled ? "Aleatório ligado" : "Aleatório desligado") + "</span>";
+  $("drawerShuffleBtn").setAttribute("aria-label",shuffleEnabled?"Aleatório ligado":"Aleatório desligado");
+  $("drawerPlayBtn").textContent = audio.paused ? "▶" : "Ⅱ";
+  $("drawerPlayBtn").setAttribute("aria-label",audio.paused?"Reproduzir":"Pausar");
+  $("drawerFavoriteBtn").textContent = isFavorite(current) ? "♥" : "♡";
+  $("drawerFavoriteBtn").classList.toggle("active",isFavorite(current));
+  $("drawerFavoriteBtn").setAttribute("aria-pressed",String(isFavorite(current)));
+  const cover = $("drawerCover");
+  if(cover){cover.innerHTML='<span>♫</span><small>'+escapeHtml(current ? (current.folder || "MUSIC") : "MUSIC")+'</small>';}
+  $("drawerVolume").value = String(audio.volume);
 }
 function deleteCurrentSong() {
   const song = songs[currentIndex];
@@ -511,7 +521,7 @@ function updateButtons() {
   const playing = !audio.paused && !audio.ended;
   $("playBtn").textContent = playing ? "Ⅱ" : "▶";
   $("shuffleBtn").classList.toggle("active",shuffleEnabled);
-
+  if($("drawerPlayBtn")){$("drawerPlayBtn").textContent=playing?"Ⅱ":"▶";$("drawerPlayBtn").setAttribute("aria-label",playing?"Pausar":"Reproduzir");}
 }
 function setVolume(value) {
   audio.volume = Number(value);
@@ -558,6 +568,10 @@ $("songList").addEventListener("click",function(event) {
 $("expandPlayerBtn").addEventListener("click",openPlayerDrawer);
 $("closePlayerBtn").addEventListener("click",closePlayerDrawer);
 $("drawerBackdrop").addEventListener("click",closePlayerDrawer);
+$("drawerPlayBtn").addEventListener("click",togglePlay);
+$("drawerFavoriteBtn").addEventListener("click",toggleFavorite);
+$("drawerVolume").addEventListener("input",event=>{setVolume(event.target.value);});
+$("drawerProgress").addEventListener("input",function(event){if(audio.duration)audio.currentTime=audio.duration*Number(event.target.value)/100;});
 $("drawerShuffleBtn").addEventListener("click",function(){
   shuffleEnabled = !shuffleEnabled;
   updateButtons(); renderDrawer();
@@ -582,7 +596,11 @@ $("progress").addEventListener("input",function(event) {
 audio.addEventListener("timeupdate",function() {
   $("currentTime").textContent = formatTime(audio.currentTime);
   $("duration").textContent = formatTime(audio.duration);
+  $("drawerCurrentTime").textContent = formatTime(audio.currentTime);
+  $("drawerDuration").textContent = formatTime(audio.duration);
   const percent = audio.duration ? audio.currentTime / audio.duration * 100 : 0;
+  $("drawerProgress").value = percent;
+  $("drawerProgress").style.setProperty("--progress-percent",percent + "%");
   $("progress").value = percent;
   $("progress").style.setProperty("--progress-percent",percent + "%");
 });
