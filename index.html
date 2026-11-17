@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#080b13">
+<meta name="theme-color" content="#080512">
 <meta name="description" content="Music Rádio — suas músicas, do seu jeito, 24 horas.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,17 +15,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=70">
-<title>Music Rádio</title>
+<link rel="stylesheet" href="style.css?v=71">
+<title>Mundo Musical — Neon Radio</title>
 </head>
 <body>
 <div class="offline-progress" id="offlineProgress" aria-label="Progresso das músicas offline"><div class="offline-progress-fill" id="offlineProgressFill"></div></div>
 <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
 <div class="app-shell">
   <header class="topbar">
-    <a class="brand" href="./" aria-label="Music início">
+    <a class="brand" href="./" aria-label="Mundo Musical início">
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-      <span class="brand-text"><span class="brand-name">MUSIC</span><span class="offline-progress-label" id="offlineProgressLabel">Carregando músicas offline…</span></span>
+      <span class="brand-text"><span class="brand-name">MUNDO <b>MUSICAL</b></span><span class="offline-progress-label" id="offlineProgressLabel">Carregando músicas offline…</span></span>
     </a>
     <div class="top-status"><span class="live-dot"></span><span>RÁDIO ONLINE</span><i>24H</i></div>
   </header>
@@ -46,7 +46,7 @@
         <div class="visual-ring ring-a"></div><div class="visual-ring ring-b"></div>
         <div class="visual-disc"><span>♫</span></div>
         <div class="visual-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <span class="visual-caption">MUSIC</span>
+        <span class="visual-caption">MUNDO MUSICAL</span>
       </div>
     </section>
 
@@ -67,7 +67,7 @@
       <div class="song-list" id="songList"></div>
       <button class="load-more" id="loadMoreSongs" type="button" hidden>Carregar mais músicas</button>
     </section>
-    <div class="site-footer">MUSIC <span>•</span> Sua música. Seu ritmo.</div>
+    <div class="site-footer">MUNDO MUSICAL <span>•</span> SUA MÚSICA. SEU RITMO.</div>
   </main>
 </div>
 
@@ -110,7 +110,7 @@
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=70"></script>
+<script src="app.js?v=71"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>
