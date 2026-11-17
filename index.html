@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=80">
+<link rel="stylesheet" href="style.css?v=81">
 <title>Music — Neon Radio</title>
 </head>
 <body>
@@ -82,35 +82,33 @@
       <button id="prevBtn" type="button" title="Música anterior" aria-label="Música anterior">⏮</button>
       <button id="playBtn" class="play-main" type="button" title="Reproduzir" aria-label="Reproduzir">▶</button>
       <button id="nextBtn" type="button" title="Próxima música" aria-label="Próxima música">⏭</button>
-      <button id="repeatBtn" type="button" title="Repetir" aria-label="Repetir">↻</button>
+      
     </div>
     <div class="progress-row"><span id="currentTime">0:00</span><input id="progress" type="range" min="0" max="100" value="0" aria-label="Progresso da música"><span id="duration">0:00</span></div>
   </div>
   <div class="player-right"><span>🔊</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"><span class="offline-status" id="offlineStatus">Offline não preparado</span></div>
   <audio id="audio" preload="auto"></audio>
 </footer>
-<section class="player-drawer" id="playerDrawer" hidden aria-label="Player completo">
+<section class="player-drawer" id="playerDrawer" hidden aria-label="Player Music">
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
-  <div class="drawer-panel">
+  <div class="drawer-panel music-player-panel">
     <div class="drawer-handle"></div>
-    <div class="drawer-top"><div><span class="section-kicker">MUSIC PLAYER</span><h2>Seu reprodutor</h2></div><button id="closePlayerBtn" class="drawer-close" type="button" aria-label="Fechar player">✕</button></div>
+    <div class="drawer-top"><div><span class="section-kicker">MUSIC PLAYER</span><h2>Reproduzindo agora</h2></div><button id="closePlayerBtn" class="drawer-close" type="button" aria-label="Fechar player">✕</button></div>
     <div class="drawer-now">
       <div class="drawer-cover">♫</div>
-      <div class="drawer-track"><strong id="drawerTitle">Nenhuma música selecionada</strong><span id="drawerArtist">Escolha uma pasta para começar</span><small id="drawerFolder">Nenhuma pasta</small></div>
+      <div class="drawer-track"><strong id="drawerTitle">Nenhuma música selecionada</strong><span id="drawerArtist">Escolha uma música para começar</span><small id="drawerFolder">Nenhuma pasta</small></div>
     </div>
-    <div class="drawer-controls">
+    <div class="simple-player-controls">
       <button id="drawerShuffleBtn" type="button" aria-pressed="false">⤨ <span>Aleatório desligado</span></button>
-      <button id="drawerPrevFolderBtn" type="button">◀ <span>Pasta anterior</span></button>
-      <button id="drawerNextFolderBtn" type="button"><span>Próxima pasta</span> ▶</button>
-      <button id="deleteCurrentBtn" class="drawer-delete" type="button">🗑 <span>Excluir música atual</span></button>
+      <div class="simple-track-controls"><button id="drawerPrevSongBtn" type="button" aria-label="Música anterior">⏮</button><button id="drawerNextSongBtn" type="button" aria-label="Próxima música">⏭</button></div>
+      <div class="simple-folder-controls"><button id="drawerPrevFolderBtn" type="button">‹ Pasta anterior</button><button id="drawerNextFolderBtn" type="button">Próxima pasta ›</button></div>
     </div>
-    <div class="drawer-queue-head"><div><h3>Fila desta pasta</h3><span id="drawerQueueCount">0 músicas</span></div><span class="queue-hint">Toque em uma faixa para ouvir</span></div>
-    <div class="drawer-queue" id="drawerQueue"></div>
+    <p class="simple-player-hint">Escolha outra música na lista da pasta ou use os controles acima.</p>
   </div>
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=80"></script>
+<script src="app.js?v=81"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>
