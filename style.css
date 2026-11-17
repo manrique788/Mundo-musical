@@ -705,3 +705,10 @@ body{
   .player{position:fixed!important}
   .player-controls{position:absolute!important;left:50%!important;top:54px!important;transform:translateX(-50%)!important;width:auto!important;display:flex!important;grid-column:auto!important;grid-row:auto!important;justify-content:center!important;align-items:center!important}
 }
+
+/* Correção de sobreposição: controles ocupam sua própria linha no player */
+@media(max-width:650px){
+  .player{grid-template-rows:auto auto auto!important;align-items:center!important}
+  .player-controls{position:static!important;left:auto!important;top:auto!important;transform:none!important;width:100%!important;grid-column:1!important;grid-row:2!important;justify-self:center!important;align-self:center!important;display:flex!important;justify-content:center!important;margin:0!important}
+  .progress-row{grid-column:1!important;grid-row:3!important;position:static!important}
+}
