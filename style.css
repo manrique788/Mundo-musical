@@ -699,3 +699,9 @@ body{
 .player-controls #playBtn{width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;background:linear-gradient(135deg,#46e3d0,#4b9cff)!important;color:#06131f!important;box-shadow:0 0 26px #46e3d055!important}
 .player-controls #prevBtn:hover,.player-controls #nextBtn:hover{color:#46e3d0!important}
 @media(max-width:650px){.player-controls{gap:clamp(30px,10vw,54px)!important}.player-controls #prevBtn,.player-controls #nextBtn{font-size:21px!important}.player-controls #playBtn{width:48px!important;height:48px!important}}
+
+/* Centro geométrico da tela no player compacto */
+@media(max-width:650px){
+  .player{position:fixed!important}
+  .player-controls{position:absolute!important;left:50%!important;top:54px!important;transform:translateX(-50%)!important;width:auto!important;display:flex!important;grid-column:auto!important;grid-row:auto!important;justify-content:center!important;align-items:center!important}
+}
