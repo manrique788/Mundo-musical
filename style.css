@@ -725,3 +725,8 @@ body{
 /* Player expandido: play/pause sem o círculo azul */
 .player-drawer .full-player-main-controls .full-player-play{background:transparent!important;color:#c9d7e8!important;box-shadow:none!important;border:0!important;border-radius:0!important}
 .player-drawer .full-player-main-controls .full-player-play:hover{background:transparent!important;color:#79e4d0!important;transform:scale(1.08)}
+
+/* Player expandido: remover qualquer círculo preto residual do play/pause */
+.player-drawer .full-player-main-controls .full-player-play,
+.player-drawer .full-player-main-controls .full-player-play:focus,
+.player-drawer .full-player-main-controls .full-player-play:active{background:none!important;background-color:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;outline:0!important;color:#c9d7e8!important}
