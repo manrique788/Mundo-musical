@@ -140,11 +140,65 @@ async function saveSongOffline(song) {
   }
   return false;
 }
-function startOfflineSync() {
-  // Não baixar a biblioteca inteira automaticamente: ela pode ter dezenas de GB.
-  // O streaming continua online e downloads continuam sendo iniciados pelo usuário.
-  offlineStatus(navigator.onLine ? "Streaming online · biblioteca preservada" : "Sem internet · somente faixas já salvas");
-  offlineProgress(0,0);
+async function startOfflineSync() {
+  if (offlineSyncRunning) return;
+  if (!navigator.onLine) {
+    offlineStatus("Sem internet · somente faixas já salvas");
+    return;
+  }
+  if (!songs.length) return;
+  offlineSyncRunning = true;
+  const total = songs.length;
+  let done = 0;
+  let failed = 0;
+  try {
+    await openOfflineDb();
+    offlineProgressBusy(0,total,"Preparando carregamento offline…");
+    const pending = [];
+    for (const song of songs) {
+      try {
+        if (await offlineGet(song.audioUrl)) done++;
+        else pending.push(song);
+      } catch (_) { pending.push(song); }
+      offlineProgressBusy(done,total,"Verificando músicas offline · " + done + "/" + total);
+    }
+
+    const grouped = new Map();
+    pending.forEach(function(song) {
+      if (!grouped.has(song.folder)) grouped.set(song.folder,[]);
+      grouped.get(song.folder).push(song);
+    });
+    const orderedFolders = folders.map(folder => folder.name).filter(name => grouped.has(name));
+    grouped.forEach(function(_,name){ if (!orderedFolders.includes(name)) orderedFolders.push(name); });
+    for (const folderName of orderedFolders) {
+      const tracks = grouped.get(folderName) || [];
+      let folderDone = 0;
+      let cursor = 0;
+      offlineProgressBusy(done,total,"Salvando " + folderName + " · 0/" + tracks.length);
+      async function worker() {
+        while (cursor < tracks.length) {
+          const song = tracks[cursor++];
+          const saved = await saveSongOffline(song);
+          if (saved) done++; else failed++;
+          folderDone++;
+          offlineProgressBusy(done,total,"Salvando " + folderName + " · " + folderDone + "/" + tracks.length + " (" + done + "/" + total + ")");
+        }
+      }
+      await Promise.all([worker(),worker(),worker(),worker()]);
+    }
+    const savedText = done + "/" + total + " músicas offline";
+    offlineProgress(done,total);
+    const bar = $("offlineProgress");
+    if (bar) bar.classList.remove("busy");
+    offlineStatus(failed ? savedText + " · " + failed + " pendentes" : savedText + " · pronto");
+  } catch (error) {
+    console.error("Falha ao preparar modo offline:",error);
+    const bar = $("offlineProgress");
+    if (bar) bar.classList.remove("busy");
+    offlineStatus(done ? "Carregamento pausado · " + done + "/" + total + " salvas" : "Não foi possível iniciar o modo offline");
+  } finally {
+    offlineSyncRunning = false;
+  }
 }
 async function loadCatalog() {
   $("genreCards").innerHTML = '<div class="loading-card">Carregando sua biblioteca...</div>';
