@@ -785,3 +785,34 @@ body{
     min-width:82px!important;min-height:82px!important;
   }
 }
+
+
+/* Ajuste solicitado: botão principal preto, sem azul claro */
+.full-player-main-controls .full-player-play{
+  background:
+    radial-gradient(circle at 32% 22%,rgba(255,255,255,.13),transparent 36%),
+    linear-gradient(145deg,#252a2e 0%,#101418 58%,#050709 100%)!important;
+  color:#a9c9c7!important;
+  border:1px solid rgba(169,201,199,.34)!important;
+  text-shadow:0 0 12px rgba(70,227,208,.18);
+  box-shadow:
+    inset 0 2px 3px rgba(255,255,255,.12),
+    inset 0 -8px 16px rgba(0,0,0,.55),
+    0 9px 24px rgba(0,0,0,.42),
+    0 0 0 7px rgba(0,0,0,.18),
+    0 0 22px rgba(70,227,208,.10)!important;
+}
+.full-player-main-controls .full-player-play::before{
+  border-color:rgba(169,201,199,.16);
+  box-shadow:0 0 18px rgba(0,0,0,.22);
+}
+.full-player-main-controls .full-player-play:hover{
+  background:linear-gradient(145deg,#343b40 0%,#151b20 58%,#080b0e 100%)!important;
+  color:#d8f4ef!important;
+  box-shadow:
+    inset 0 2px 3px rgba(255,255,255,.15),
+    inset 0 -8px 16px rgba(0,0,0,.5),
+    0 12px 28px rgba(0,0,0,.48),
+    0 0 0 8px rgba(0,0,0,.2),
+    0 0 28px rgba(70,227,208,.16)!important;
+}
