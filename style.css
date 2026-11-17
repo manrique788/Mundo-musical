@@ -553,3 +553,21 @@ body.in-folder .main-content{padding-top:20px}
  .song-info strong{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+/* MUSIC v81 — player simples, focado na reprodução */
+.player-drawer .music-player-panel{width:min(560px,100%);max-height:min(78vh,720px);padding:26px 24px 30px;border-radius:26px 26px 0 0;overflow:auto}
+.music-player-panel .drawer-now{margin:34px 0 30px;align-items:center}
+.music-player-panel .drawer-cover{width:96px;height:96px;flex:0 0 96px;border-radius:22px;font-size:48px;background:linear-gradient(145deg,#303a22,#14191a);border:1px solid #c5ff3d55;color:#d7ff83}
+.music-player-panel .drawer-track strong{display:block;font-size:20px;line-height:1.3;white-space:normal;overflow-wrap:anywhere}
+.music-player-panel .drawer-track span{display:block;margin-top:7px;font-size:14px}
+.music-player-panel .drawer-track small{display:block;margin-top:7px;color:#c5ff3d;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.simple-player-controls{display:grid;gap:20px}
+.simple-player-controls button{min-height:46px;border:1px solid #ffffff18;border-radius:13px;background:#ffffff09;color:#f4f5f7;font:600 13px "DM Sans",sans-serif;padding:10px 14px}
+.simple-player-controls button:active,.simple-player-controls button.active{background:#c5ff3d18;border-color:#c5ff3d77;color:#d7ff83}
+.simple-player-controls #drawerShuffleBtn{justify-self:center;min-width:190px}
+.simple-track-controls{display:flex;justify-content:center;align-items:center;gap:28px}
+.simple-track-controls button{width:68px;height:58px;font-size:24px;border-radius:18px}
+.simple-track-controls button:last-child{background:#c5ff3d;color:#171b10;border:0}
+.simple-folder-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.simple-player-hint{margin:20px 0 0;text-align:center;color:#8f96a4;font-size:11px;line-height:1.6}
+@media(max-width:560px){.player-drawer .music-player-panel{padding:22px 18px calc(25px + env(safe-area-inset-bottom))}.music-player-panel .drawer-now{margin:27px 0 25px}.music-player-panel .drawer-cover{width:76px;height:76px;flex-basis:76px;font-size:38px}.music-player-panel .drawer-track strong{font-size:16px}.simple-track-controls{gap:22px}.simple-track-controls button{width:62px;height:54px}}
