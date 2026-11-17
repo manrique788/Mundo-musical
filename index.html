@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#080512">
-<meta name="description" content="Music Rádio — suas músicas, do seu jeito, 24 horas.">
+<meta name="description" content="MUSIC — sua experiência premium para ouvir música.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=72">
+<link rel="stylesheet" href="style.css?v=80">
 <title>Music — Neon Radio</title>
 </head>
 <body>
@@ -27,19 +27,19 @@
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
       <span class="brand-text"><span class="brand-name">MUSIC</span><span class="offline-progress-label" id="offlineProgressLabel">Carregando músicas offline…</span></span>
     </a>
-    <div class="top-status"><span class="live-dot"></span><span>RÁDIO ONLINE</span><i>24H</i></div>
+    <div class="top-status"><span class="live-dot"></span><span>SEU SOM, SEM LIMITES</span><i>PREMIUM</i></div>
   </header>
 
   <main class="main-content">
     <section class="radio-stage">
       <div class="radio-copy">
-        <div class="eyebrow"><span class="live-dot"></span> SUA RÁDIO, DO SEU JEITO</div>
-        <h1>A música não<br><em>para nunca.</em></h1>
-        <p>Sua biblioteca musical para ouvir. Escolha uma pasta, aperte o play e deixe tocar.</p>
+        <div class="eyebrow"><span class="live-dot"></span> MUSIC EXPERIENCE</div>
+        <h1>Sua música.<br><em>Do seu jeito.</em></h1>
+        <p>Descubra seus estilos favoritos, explore sua coleção e transforme qualquer momento em uma experiência sonora.</p>
         <div class="radio-stats">
-          <div><strong id="trackCount">Carregando...</strong><span>FAIXAS NA BIBLIOTECA</span></div>
+          <div><strong id="trackCount">Carregando...</strong><span>FAIXAS DISPONÍVEIS</span></div>
           <div class="stats-line"></div>
-          <div><strong id="folderCount">—</strong><span>PASTAS MUSICAIS</span></div>
+          <div><strong id="folderCount">—</strong><span>ESTAÇÕES</span></div>
         </div>
       </div>
       <div class="radio-visual" aria-hidden="true">
@@ -51,8 +51,8 @@
     </section>
 
     <section class="section-heading">
-      <div><span class="section-kicker">DESCUBRA SEU SOM</span><h2>Escolha sua estação</h2><p>Toque em uma pasta para começar a ouvir.</p></div>
-      <span class="folder-total" id="folderTotal">Carregando pastas</span>
+      <div><span class="section-kicker">SUA COLEÇÃO</span><h2>Explore sua música</h2><p>Escolha um estilo e entre no seu universo sonoro.</p></div><label class="library-search"><span>⌕</span><input id="folderSearch" type="search" placeholder="Buscar estilo musical..." autocomplete="off" aria-label="Buscar estilo musical"></label>
+      <span class="folder-total" id="folderTotal">Carregando estações</span>
     </section>
     <div class="folder-grid" id="genreCards">
       <div class="loading-card">Conectando à biblioteca musical...</div>
@@ -110,7 +110,7 @@
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=72"></script>
+<script src="app.js?v=80"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>
