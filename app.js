@@ -688,6 +688,77 @@ document.addEventListener("visibilitychange",function(){
   if (!document.hidden) setTimeout(startOfflineSync,500);
 });
 window.addEventListener("online",function(){ offlineStatus("Internet recuperada · retomando carregamento…"); setTimeout(startOfflineSync,300); });
+
+const AUTH_BASE = API.replace(/\/catalog(?:\?.*)?$/, "");
+const AUTH_TOKEN_KEY = "music-vip-session-v1";
+let accountMode = "login";
+function getAuthToken(){try{return localStorage.getItem(AUTH_TOKEN_KEY)||"";}catch(_){return "";}}
+function setAuthToken(token){try{if(token)localStorage.setItem(AUTH_TOKEN_KEY,token);else localStorage.removeItem(AUTH_TOKEN_KEY);}catch(_){}}
+function openAccount(mode){
+  accountMode = mode || (getAuthToken() ? "profile" : "login");
+  const modal = $("accountModal"); if(!modal)return;
+  modal.hidden = false;
+  $("accountForm").hidden = accountMode === "profile";
+  $("accountProfile").hidden = accountMode !== "profile";
+  $("accountSwitch").hidden = accountMode === "profile";
+  $("accountTitle").textContent = accountMode === "register" ? "Criar sua conta" : accountMode === "profile" ? "Minha conta" : "Acesse sua conta";
+  $("accountDescription").textContent = accountMode === "register" ? "Cadastre-se com e-mail e senha." : accountMode === "profile" ? "Seus dados de acesso." : "Entre para acessar sua conta MUSIC VIP.";
+  $("accountSubmit").textContent = accountMode === "register" ? "Criar conta" : "Entrar";
+  $("accountSwitch").textContent = accountMode === "register" ? "Já tem conta? Entrar" : "Ainda não tem conta? Criar conta";
+  $("accountFeedback").textContent = "";
+  if(accountMode === "profile") refreshAccount();
+}
+function closeAccount(){const modal=$("accountModal");if(modal)modal.hidden=true;}
+async function authRequest(path,method,body){
+  const headers={"Content-Type":"application/json"};
+  const token=getAuthToken(); if(token)headers.Authorization="Bearer "+token;
+  const response=await fetch(AUTH_BASE+path,{method,headers,body:body?JSON.stringify(body):undefined,cache:"no-store"});
+  let data={};try{data=await response.json();}catch(_){}
+  if(!response.ok)throw new Error(data.error||"Não foi possível concluir. Tente novamente.");
+  return data;
+}
+async function refreshAccount(){
+  try{
+    const data=await authRequest("/auth/me","GET");
+    $("accountEmailDisplay").textContent="E-mail: "+data.user.email;
+    $("accountPlanDisplay").textContent="Plano: ainda sem assinatura ativa";
+    $("accountBtn").textContent="Minha conta";
+  }catch(error){
+    setAuthToken("");
+    $("accountBtn").textContent="Entrar";
+    $("accountFeedback").textContent="Sua sessão expirou. Entre novamente.";
+    accountMode="login";$("accountForm").hidden=false;$("accountProfile").hidden=true;$("accountSwitch").hidden=false;
+    $("accountTitle").textContent="Acesse sua conta";
+  }
+}
+$("accountBtn").addEventListener("click",function(){openAccount(getAuthToken()?"profile":"login");});
+$("accountClose").addEventListener("click",closeAccount);
+$("accountBackdrop").addEventListener("click",closeAccount);
+$("accountSwitch").addEventListener("click",function(){openAccount(accountMode==="register"?"login":"register");});
+$("accountForm").addEventListener("submit",async function(event){
+  event.preventDefault();
+  const email=$("accountEmail").value.trim().toLowerCase();
+  const password=$("accountPassword").value;
+  const submit=$("accountSubmit");submit.disabled=true;submit.textContent="Aguarde...";
+  $("accountFeedback").textContent="";
+  try{
+    const route=accountMode==="register"?"/auth/register":"/auth/login";
+    const data=await authRequest(route,"POST",{email,password});
+    setAuthToken(data.token);
+    $("accountPassword").value="";
+    $("accountFeedback").textContent=accountMode==="register"?"Conta criada com sucesso!":"Login realizado com sucesso!";
+    $("accountBtn").textContent="Minha conta";
+    setTimeout(function(){openAccount("profile");},500);
+  }catch(error){$("accountFeedback").textContent=error.message;}
+  finally{submit.disabled=false;submit.textContent=accountMode==="register"?"Criar conta":"Entrar";}
+});
+$("accountLogout").addEventListener("click",async function(){
+  try{await authRequest("/auth/logout","POST",{});}catch(_){}
+  setAuthToken("");$("accountBtn").textContent="Entrar";openAccount("login");
+  $("accountFeedback").textContent="Você saiu da sua conta.";
+});
+if(getAuthToken())$("accountBtn").textContent="Minha conta";
+
 setupMediaSession();
 updateButtons();
 loadCatalog();
