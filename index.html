@@ -27,7 +27,7 @@
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
       <span class="brand-text"><span class="brand-name">MUSIC</span><span class="offline-progress-label" id="offlineProgressLabel">Carregando músicas offline…</span></span>
     </a>
-    <div class="top-status"><span class="live-dot"></span><span>SEU SOM, SEM LIMITES</span><i>PREMIUM</i></div>
+    <div class="top-status"><span class="live-dot"></span><span>SEU SOM, SEM LIMITES</span><i>PREMIUM</i><button class="account-open-btn" id="accountBtn" type="button">Entrar</button></div>
   </header>
 
   <main class="main-content">
@@ -122,6 +122,45 @@
     </div>
   </div>
 </section>
+
+  <section class="account-modal" id="accountModal" hidden aria-label="Conta MUSIC VIP">
+    <div class="account-backdrop" id="accountBackdrop"></div>
+    <div class="account-panel" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+      <button class="account-close" id="accountClose" type="button" aria-label="Fechar">×</button>
+      <div class="account-brand">MUSIC <span>VIP</span></div>
+      <h2 id="accountTitle">Acesse sua conta</h2>
+      <p id="accountDescription">Entre ou crie sua conta para continuar.</p>
+      <form id="accountForm">
+        <label for="accountEmail">E-mail</label>
+        <input id="accountEmail" type="email" autocomplete="email" required maxlength="254" placeholder="seu@email.com">
+        <label for="accountPassword">Senha</label>
+        <input id="accountPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="Mínimo de 8 caracteres">
+        <button class="account-submit" id="accountSubmit" type="submit">Entrar</button>
+      </form>
+      <p class="account-feedback" id="accountFeedback" role="status" aria-live="polite"></p>
+      <button class="account-switch" id="accountSwitch" type="button">Ainda não tem conta? Criar conta</button>
+      <div class="account-profile" id="accountProfile" hidden>
+        <p id="accountEmailDisplay"></p>
+        <p id="accountPlanDisplay">Plano: aguardando assinatura</p>
+        <button class="account-submit" id="accountLogout" type="button">Sair da conta</button>
+      </div>
+    </div>
+  </section>
+  <style>
+    .account-open-btn{margin-left:12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:9px 16px;background:#17131f;color:#fff;font:600 13px inherit;cursor:pointer}
+    .account-modal[hidden]{display:none!important}.account-modal{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px}
+    .account-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.76);backdrop-filter:blur(8px)}
+    .account-panel{position:relative;width:min(100%,420px);padding:30px;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:#100d18;color:#fff;box-shadow:0 24px 90px #0009}
+    .account-close{position:absolute;right:16px;top:12px;border:0;background:none;color:#aaa;font-size:28px;cursor:pointer}
+    .account-brand{font-weight:800;letter-spacing:3px;font-size:14px}.account-brand span{color:#aaa}
+    .account-panel h2{margin:22px 0 6px;font-size:25px}.account-panel>p{color:#aaa;font-size:14px}
+    .account-panel form{display:grid;gap:9px;margin-top:22px}.account-panel label{font-size:13px;color:#ccc}
+    .account-panel input{width:100%;box-sizing:border-box;padding:13px 14px;border:1px solid #393341;border-radius:12px;background:#1b1723;color:#fff;font:inherit;outline:none}
+    .account-panel input:focus{border-color:#aaa}.account-submit{width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:#f2f0f5;color:#17131f;font-weight:800;cursor:pointer}
+    .account-feedback{min-height:20px;margin:12px 0;color:#ddd;font-size:13px}.account-switch{border:0;background:none;color:#ccc;text-decoration:underline;cursor:pointer;font:inherit;font-size:13px}
+    .account-profile{margin-top:18px;padding-top:16px;border-top:1px solid #393341}.account-profile p{color:#ddd;font-size:14px;overflow-wrap:anywhere}
+    @media(max-width:600px){.account-panel{padding:25px 20px}.top-status>span:not(.live-dot),.top-status>i{display:none}}
+  </style>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
 <script src="app.js?v=98"></script>
