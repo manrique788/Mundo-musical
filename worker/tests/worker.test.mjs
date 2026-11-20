@@ -114,6 +114,40 @@ function streamUrlFor(key, ticket) {
   return url;
 }
 
+test("cadastro gera hash PBKDF2 dentro do limite suportado pelo Worker Cloudflare", async () => {
+  const env = testEnvironment();
+  let storedPasswordHash = "";
+  env.DB = {
+    prepare(sql) {
+      return {
+        sql,
+        bind(...values) {
+          return {
+            sql,
+            values,
+            async first() { return null; },
+            async run() { return { success: true }; }
+          };
+        }
+      };
+    },
+    async batch(statements) {
+      const userStatement = statements.find(statement => statement.sql.includes("INSERT INTO users"));
+      storedPasswordHash = userStatement?.values?.[3] || "";
+      return [];
+    }
+  };
+
+  const response = await musicWorker.fetch(new Request("https://worker.example/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "new-user@example.com", password: "correct-horse-battery-staple" })
+  }), env);
+
+  assert.equal(response.status, 201);
+  assert.equal(storedPasswordHash.split("$")[1], "100000");
+});
+
 test("recusa o catálogo sem sessão antes de listar objetos do R2", async () => {
   const env = testEnvironment();
   const response = await musicWorker.fetch(new Request("https://worker.example/catalog"), env);

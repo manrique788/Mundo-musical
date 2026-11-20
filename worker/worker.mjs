@@ -1,7 +1,7 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const SESSION_DAYS = 7;
-const PASSWORD_ITERATIONS = 210000;
+const PASSWORD_ITERATIONS = 100000;
 const PREMIUM_AMOUNT_CENTS = 1500;
 const MEDIA_TICKET_TTL_SECONDS = 4 * 60 * 60;
 const SITE_URL = "https://manrique788.github.io/Mundo-musical/";
@@ -59,7 +59,7 @@ async function verifyPassword(password, storedHash) {
     const parts = String(storedHash || "").split("$");
     if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
     const iterations = Number(parts[1]);
-    if (!Number.isInteger(iterations) || iterations < 100000 || iterations > 1000000) return false;
+    if (!Number.isInteger(iterations) || iterations < 100000 || iterations > PASSWORD_ITERATIONS) return false;
     const salt = fromBase64Url(parts[2]);
     const expected = fromBase64Url(parts[3]);
     const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
