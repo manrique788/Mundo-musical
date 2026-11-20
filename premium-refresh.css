@@ -326,6 +326,8 @@ body {
 }
 .full-player-art:after { border-color: rgba(169,203,189,.42); }
 .full-player-progress input, .full-player-volume input { accent-color: var(--accent); }
+.full-player-volume > span { display: none !important; }
+.full-player-volume input { flex: 1 1 auto; min-width: 0; }
 .full-player-main-controls button.active, .full-player-folder-controls button:active { color: var(--accent-bright); }
 /* Mantém deliberadamente o botão play/pause expandido sem círculo, conforme o visual já aprovado. */
 .player-drawer .full-player-main-controls .full-player-play,
