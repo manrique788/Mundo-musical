@@ -614,12 +614,50 @@ async function persistPayment(env, order, payment) {
   return true;
 }
 
-async function persistApprovedReconciledPayment(env, order, payment) {
+async function verifyPaymentPreference(env, order, preferenceId) {
+  const id = String(preferenceId || "");
+  if (!id || id.length > 128) return { failure: "invalid_id" };
+
+  let response;
+  try {
+    response = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(id)}`, {
+      headers: {
+        "Authorization": `Bearer ${env.MERCADOPAGO_ACCESS_TOKEN}`,
+        "Accept": "application/json"
+      }
+    });
+  } catch {
+    return { failure: "network" };
+  }
+  if (!response.ok) return { failure: "http" };
+
+  const preference = await response.json().catch(() => null);
+  if (!preference || typeof preference !== "object") return { failure: "invalid_response" };
+  const items = Array.isArray(preference.items) ? preference.items : [];
+  const item = items.length === 1 ? items[0] || {} : {};
+  const checks = {
+    id: String(preference.id || "") === id,
+    externalReference: String(preference.external_reference || "") === String(order.id),
+    item: items.length === 1 &&
+      String(item.id || "") === "music-vip-lifetime" &&
+      Number(item.quantity) === 1 &&
+      Math.round(Number(item.unit_price) * 100) === Number(order.amount_cents) &&
+      String(item.currency_id || "") === String(order.currency_id || "BRL")
+  };
+  return { checks, valid: Object.values(checks).every(Boolean) };
+}
+
+async function persistApprovedReconciledPayment(env, order, payment, verifiedPreferenceId = null) {
   const providerPaymentId = String(payment.id);
   const paymentRowId = `mercadopago_${providerPaymentId}`;
   const amountCents = Math.round(Number(payment.transaction_amount) * 100);
   const paidAt = payment.date_approved || new Date().toISOString();
   const now = new Date().toISOString();
+  const currentPreferenceId = String(order.preference_id || "");
+  const targetPreferenceId = verifiedPreferenceId
+    ? String(verifiedPreferenceId)
+    : currentPreferenceId;
+  if (!targetPreferenceId) return false;
   const existing = await env.DB.prepare(
     `SELECT id, user_id, provider FROM payments WHERE provider_payment_id = ? LIMIT 1`
   ).bind(providerPaymentId).first();
@@ -628,11 +666,12 @@ async function persistApprovedReconciledPayment(env, order, payment) {
   const results = await env.DB.batch([
     env.DB.prepare(
       `UPDATE checkout_orders
-       SET status = 'approved', provider_payment_id = ?, updated_at = ?
+       SET status = 'approved', provider_payment_id = ?, updated_at = ?, preference_id = ?
        WHERE id = ? AND user_id = ? AND provider = 'mercadopago'
          AND (status = 'pending' OR (status = 'approved' AND provider_payment_id = ?))
-         AND (provider_payment_id IS NULL OR provider_payment_id = ?)`
-    ).bind(providerPaymentId, now, order.id, order.user_id, providerPaymentId, providerPaymentId),
+         AND (provider_payment_id IS NULL OR provider_payment_id = ?)
+         AND preference_id = ?`
+    ).bind(providerPaymentId, now, targetPreferenceId, order.id, order.user_id, providerPaymentId, providerPaymentId, currentPreferenceId),
     env.DB.prepare(
       `INSERT INTO payments
         (id, user_id, subscription_id, provider, provider_payment_id, amount_cents, status, paid_at)
@@ -733,6 +772,16 @@ async function reconcilePendingPayments(env, userId) {
         invalidDetails: 0,
         detailsFetched: 0,
         mismatches: { status: 0, liveMode: 0, externalReference: 0, preference: 0, amount: 0, currency: 0 },
+        preferenceVerification: {
+          attempts: 0,
+          networkErrors: 0,
+          httpErrors: 0,
+          invalidResponses: 0,
+          idMismatches: 0,
+          externalReferenceMismatches: 0,
+          itemMismatches: 0,
+          verified: 0
+        },
         validatedPayments: 0,
         entitlementsGranted: 0
       };
@@ -763,20 +812,43 @@ async function reconcilePendingPayments(env, userId) {
           continue;
         }
         summary.detailsFetched++;
+        const storedPreferenceMatches = String(payment.preference_id || "") === String(order.preference_id || "");
         const checks = {
           status: payment.status === "approved",
           liveMode: payment.live_mode === true,
           externalReference: String(payment.external_reference || "") === String(order.id),
-          preference: String(payment.preference_id || "") === String(order.preference_id),
+          preference: storedPreferenceMatches,
           amount: Math.round(Number(payment.transaction_amount) * 100) === Number(order.amount_cents),
           currency: String(payment.currency_id || "") === String(order.currency_id || "BRL")
         };
+        if (!storedPreferenceMatches) summary.mismatches.preference++;
+
+        let verifiedPreferenceId = null;
+        if (!checks.preference && payment.preference_id) {
+          summary.preferenceVerification.attempts++;
+          const verification = await verifyPaymentPreference(env, order, payment.preference_id);
+          if (verification.failure === "network") summary.preferenceVerification.networkErrors++;
+          else if (verification.failure === "http") summary.preferenceVerification.httpErrors++;
+          else if (verification.failure) summary.preferenceVerification.invalidResponses++;
+          else {
+            if (!verification.checks.id) summary.preferenceVerification.idMismatches++;
+            if (!verification.checks.externalReference) summary.preferenceVerification.externalReferenceMismatches++;
+            if (!verification.checks.item) summary.preferenceVerification.itemMismatches++;
+            if (verification.valid) {
+              verifiedPreferenceId = String(payment.preference_id);
+              checks.preference = true;
+              summary.preferenceVerification.verified++;
+            }
+          }
+        }
+
         for (const [key, valid] of Object.entries(checks)) {
+          if (key === "preference") continue;
           if (!valid) summary.mismatches[key]++;
         }
         if (!Object.values(checks).every(Boolean)) continue;
         summary.validatedPayments++;
-        if (await persistApprovedReconciledPayment(env, order, payment)) {
+        if (await persistApprovedReconciledPayment(env, order, payment, verifiedPreferenceId)) {
           summary.entitlementsGranted++;
           break;
         }

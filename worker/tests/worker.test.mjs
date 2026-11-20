@@ -168,14 +168,16 @@ function paymentReconciliationEnvironment() {
     async batch(statements) {
       const update = statements[0];
       if (!update.sql.includes("UPDATE checkout_orders")) return statements.map(() => ({ meta: { changes: 0 } }));
-      const [paymentId, updatedAt, orderId, userId, approvedPaymentId, allowedPaymentId] = update.values;
+      const [paymentId, updatedAt, preferenceId, orderId, userId, approvedPaymentId, allowedPaymentId, expectedPreferenceId] = update.values;
       const allowedStatus = state.order.status === "pending" || (state.order.status === "approved" && state.order.provider_payment_id === approvedPaymentId);
       const allowedPayment = !state.order.provider_payment_id || state.order.provider_payment_id === allowedPaymentId;
-      if (orderId !== state.order.id || userId !== state.order.user_id || !allowedStatus || !allowedPayment) {
+      const allowedPreference = state.order.preference_id === expectedPreferenceId;
+      if (orderId !== state.order.id || userId !== state.order.user_id || !allowedStatus || !allowedPayment || !allowedPreference) {
         return statements.map(() => ({ meta: { changes: 0 } }));
       }
       state.order.status = "approved";
       state.order.provider_payment_id = paymentId;
+      state.order.preference_id = preferenceId;
       state.order.updated_at = updatedAt;
       state.entitled = true;
       state.paymentRows++;
@@ -439,6 +441,103 @@ test("pagamentos/status aceita resultados de busca do Mercado Pago envolvidos em
   assert.equal((await response.json()).lifetimeAccess, true);
   assert.equal(state.order.provider_payment_id, "payment-1");
   assert.equal(state.paymentRows, 1);
+});
+
+test("corrige preferência local divergente somente após verificar no Mercado Pago o pedido e o item exatos", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  const originalPreferenceId = state.order.preference_id;
+  const paymentPreferenceId = "verified-payment-preference";
+  let preferenceCalls = 0;
+  let summary;
+  const originalInfo = console.info;
+  console.info = (_eventName, details) => { summary = details; };
+  try {
+    const response = await withMockedFetch(async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(init.headers.Authorization, "Bearer unit-test-access-token");
+      if (url.pathname === "/v1/payments/search") {
+        return new Response(JSON.stringify({ results: [{ id: "payment-1" }] }), { status: 200 });
+      }
+      if (url.pathname === "/v1/payments/payment-1") {
+        return new Response(JSON.stringify({
+          id: "payment-1",
+          status: "approved",
+          live_mode: true,
+          external_reference: "order-1",
+          preference_id: paymentPreferenceId,
+          transaction_amount: 15,
+          currency_id: "BRL",
+          date_approved: "2026-11-20T22:00:00.000Z"
+        }), { status: 200 });
+      }
+      if (url.pathname === `/checkout/preferences/${paymentPreferenceId}`) {
+        preferenceCalls++;
+        return new Response(JSON.stringify({
+          id: paymentPreferenceId,
+          external_reference: "order-1",
+          items: [{ id: "music-vip-lifetime", quantity: 1, unit_price: "15.00", currency_id: "BRL" }]
+        }), { status: 200 });
+      }
+      throw new Error("Unexpected Mercado Pago URL");
+    }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+      headers: { Authorization: "Bearer test-session-token" }
+    }), env));
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).lifetimeAccess, true);
+  } finally {
+    console.info = originalInfo;
+  }
+
+  assert.equal(preferenceCalls, 1);
+  assert.equal(state.order.preference_id, paymentPreferenceId);
+  assert.notEqual(state.order.preference_id, originalPreferenceId);
+  assert.equal(state.order.status, "approved");
+  assert.equal(state.paymentRows, 1);
+  assert.equal(summary.preferenceVerification.attempts, 1);
+  assert.equal(summary.preferenceVerification.verified, 1);
+  assert.equal(summary.entitlementsGranted, 1);
+  assert.doesNotMatch(JSON.stringify(summary), /verified-payment-preference|payment-1|order-1|15\.00/);
+});
+
+test("mantém pendente e não repara a preferência se a preferência remota apontar para outro pedido", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  const originalPreferenceId = state.order.preference_id;
+  const response = await withMockedFetch(async input => {
+    const url = new URL(String(input));
+    if (url.pathname === "/v1/payments/search") {
+      return new Response(JSON.stringify({ results: [{ id: "payment-1" }] }), { status: 200 });
+    }
+    if (url.pathname === "/v1/payments/payment-1") {
+      return new Response(JSON.stringify({
+        id: "payment-1",
+        status: "approved",
+        live_mode: true,
+        external_reference: "order-1",
+        preference_id: "other-preference",
+        transaction_amount: 15,
+        currency_id: "BRL"
+      }), { status: 200 });
+    }
+    if (url.pathname === "/checkout/preferences/other-preference") {
+      return new Response(JSON.stringify({
+        id: "other-preference",
+        external_reference: "different-order",
+        items: [{ id: "music-vip-lifetime", quantity: 1, unit_price: "15.00", currency_id: "BRL" }]
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected Mercado Pago URL");
+  }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), env));
+
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.lifetimeAccess, false);
+  assert.equal(result.paymentStatus, "pending");
+  assert.equal(state.order.status, "pending");
+  assert.equal(state.order.preference_id, originalPreferenceId);
+  assert.equal(state.paymentRows, 0);
 });
 
 test("reconciliação registra somente métricas agregadas e não expõe identificadores", async () => {
