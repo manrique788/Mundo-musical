@@ -411,6 +411,36 @@ test("pagamentos/status reconcilia pagamento aprovado e correspondente sem confi
   assert.equal(detailCalls, 1);
 });
 
+test("pagamentos/status aceita resultados de busca do Mercado Pago envolvidos em array", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  const response = await withMockedFetch(async input => {
+    const url = new URL(String(input));
+    if (url.pathname === "/v1/payments/search") {
+      return new Response(JSON.stringify([{ paging: { total: 1 }, results: [{ id: "payment-1" }] }]), { status: 200 });
+    }
+    if (url.pathname === "/v1/payments/payment-1") {
+      return new Response(JSON.stringify({
+        id: "payment-1",
+        status: "approved",
+        live_mode: true,
+        external_reference: "order-1",
+        preference_id: "preference-1",
+        transaction_amount: 15,
+        currency_id: "BRL",
+        date_approved: "2026-11-20T22:00:00.000Z"
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected Mercado Pago URL");
+  }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), env));
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).lifetimeAccess, true);
+  assert.equal(state.order.provider_payment_id, "payment-1");
+  assert.equal(state.paymentRows, 1);
+});
+
 test("pagamentos/status não consulta o Mercado Pago sem sessão autenticada", async () => {
   const { env } = paymentReconciliationEnvironment();
   let fetchCalls = 0;

@@ -717,9 +717,11 @@ async function reconcilePendingPayments(env, userId) {
         continue;
       }
       const searchData = await searchResponse.json().catch(() => null);
-      const candidates = Array.isArray(searchData && searchData.results)
-        ? searchData.results.slice(0, PAYMENT_RECONCILE_PAYMENT_LIMIT)
-        : [];
+      const resultPages = Array.isArray(searchData) ? searchData : [searchData];
+      const searchResults = resultPages.flatMap(page =>
+        Array.isArray(page && page.results) ? page.results : []
+      );
+      const candidates = searchResults.slice(0, PAYMENT_RECONCILE_PAYMENT_LIMIT);
 
       for (const candidate of candidates) {
         const candidateId = String(candidate && candidate.id || "");
