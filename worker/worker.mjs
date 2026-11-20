@@ -824,7 +824,9 @@ async function reconcilePendingPayments(env, userId) {
         if (!storedPreferenceMatches) summary.mismatches.preference++;
 
         let verifiedPreferenceId = null;
-        if (!checks.preference && payment.preference_id) {
+        const otherChecksMatch = Object.entries(checks)
+          .every(([key, valid]) => key === "preference" || valid);
+        if (!checks.preference && payment.preference_id && otherChecksMatch) {
           summary.preferenceVerification.attempts++;
           const verification = await verifyPaymentPreference(env, order, payment.preference_id);
           if (verification.failure === "network") summary.preferenceVerification.networkErrors++;
