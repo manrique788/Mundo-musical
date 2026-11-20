@@ -9,9 +9,8 @@ const DELETED_SONGS_KEY = "music-deleted-songs-v1";
 const DELETED_FOLDERS_KEY = "music-deleted-folders-v1";
 const CATALOG_CACHE_KEY = "music-catalog-v1";
 const MUSIC_CACHE_PURGE_KEY = "music-cache-purge-v1";
-const MUSIC_CACHE_PURGE_VERSION = "2026-11-20-empty-catalog";
+const MUSIC_CACHE_PURGE_VERSION = "2026-11-20-stream-only-v1";
 let offlineDbPromise = null;
-let offlineSyncRunning = false;
 let activeObjectUrl = "";
 let songs = [];
 let folders = [];
@@ -20,9 +19,14 @@ let folderSearchTerm = "";
 let queue = [];
 let currentIndex = -1;
 let shuffleEnabled = false;
+let lifetimeAccess = false;
+let streamingConfigured = false;
+let paymentsConfigured = false;
+let pendingAccessMessage = "";
 
 let visibleLimit = PAGE_SIZE;
 let requestId = 0;
+let mediaRecoveryId = -1;
 let toastTimer = 0;
 const history = [];
 const palettes = ["#263f70","#50326f","#155c67","#70432d","#3b4e86","#32664e","#74405c","#315b79"];
@@ -78,6 +82,17 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
 }
+function canAccessSong(song) { return Boolean(song && lifetimeAccess && getAuthToken() && song.streamUrl && navigator.onLine !== false); }
+function requestPremiumAccess(message) {
+  if (lifetimeAccess) return true;
+  pendingAccessMessage = safeText(message || "Este conteúdo exige uma conta e acesso vitalício.");
+  const loggedIn = Boolean(getAuthToken());
+  openAccount(loggedIn ? "profile" : initialAccountMode());
+  $("accountDescription").textContent = loggedIn
+    ? pendingAccessMessage + " O acesso completo custa R$ 15,00 em pagamento único."
+    : pendingAccessMessage + " Crie sua conta ou entre para ver o plano vitalício de R$ 15,00.";
+  return false;
+}
 function openOfflineDb() {
   if (offlineDbPromise) return offlineDbPromise;
   offlineDbPromise = new Promise(function(resolve,reject) {
@@ -87,19 +102,6 @@ function openOfflineDb() {
     request.onerror = function() { reject(request.error); };
   });
   return offlineDbPromise;
-}
-function offlineGet(url) {
-  return openOfflineDb().then(function(db) { return new Promise(function(resolve,reject) {
-    const request = db.transaction("audio").objectStore("audio").get(url);
-    request.onsuccess = function() { resolve(request.result ? request.result.blob : null); };
-    request.onerror = function() { reject(request.error); };
-  }); });
-}
-function offlinePut(url,blob) {
-  return openOfflineDb().then(function(db) { return new Promise(function(resolve,reject) {
-    const request = db.transaction("audio","readwrite").objectStore("audio").put({url:url,blob:blob,savedAt:Date.now()});
-    request.onsuccess = resolve; request.onerror = function() { reject(request.error); };
-  }); });
 }
 function getDeletedSongs() {
   try {
@@ -166,107 +168,86 @@ function offlineProgress(done,total) {
   bar.title = total ? "Músicas disponíveis offline: " + done + "/" + total : "Offline";
   bar.classList.toggle("complete",total > 0 && done >= total);
 }
-function offlineProgressBusy(done,total,message) {
-  const bar = $("offlineProgress");
-  if (bar) bar.classList.add("busy");
-  offlineProgress(Math.max(1,done),total);
-  if (message) offlineStatus(message);
-}
-function fetchOfflineBlob(url, timeoutMs) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url,{mode:"cors",cache:"no-store",signal:controller.signal}).then(function(response) {
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    return Promise.race([response.blob(),new Promise((_,reject) => setTimeout(() => reject(new Error("timeout")),timeoutMs))]);
-  }).finally(() => clearTimeout(timer));
-}
-async function saveSongOffline(song) {
-  for (let attempt=1; attempt<=3; attempt++) {
-    try { await offlinePut(song.audioUrl,await fetchOfflineBlob(song.audioUrl,30000)); return true; }
-    catch (error) { console.warn("Offline tentativa " + attempt + ":",song.title,error); if (attempt < 3) await new Promise(resolve => setTimeout(resolve,700)); }
-  }
-  return false;
-}
-async function startOfflineSync() {
-  if (offlineSyncRunning) return;
-  if (!navigator.onLine) {
-    offlineStatus("Sem internet · somente faixas já salvas");
-    return;
-  }
-  if (!songs.length) return;
-  offlineSyncRunning = true;
-  const total = songs.length;
-  let done = 0;
-  let failed = 0;
-  try {
-    await openOfflineDb();
-    offlineProgressBusy(0,total,"Preparando carregamento offline…");
-    const pending = [];
-    for (const song of songs) {
-      try {
-        if (await offlineGet(song.audioUrl)) done++;
-        else pending.push(song);
-      } catch (_) { pending.push(song); }
-      offlineProgressBusy(done,total,"Verificando músicas offline · " + done + "/" + total);
-    }
-
-    const grouped = new Map();
-    pending.forEach(function(song) {
-      if (!grouped.has(song.folder)) grouped.set(song.folder,[]);
-      grouped.get(song.folder).push(song);
+function buildFolderList() {
+  const counts = new Map();
+  const folderFirstSeen = new Map();
+  songs.forEach(function(song,index) {
+    counts.set(song.folder,(counts.get(song.folder)||0)+1);
+    if (!folderFirstSeen.has(song.folder)) folderFirstSeen.set(song.folder,index);
+  });
+  folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
+    .sort((a,b) => {
+      const priority = function(name) {
+        const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+        if (normalized.includes("mega funk")) return 1;
+        if (normalized.includes("funk") && !normalized.includes("eletro")) return 0;
+        return 2;
+      };
+      return priority(a.name) - priority(b.name) ||
+        ((folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER));
     });
-    const orderedFolders = folders.map(folder => folder.name).filter(name => grouped.has(name));
-    grouped.forEach(function(_,name){ if (!orderedFolders.includes(name)) orderedFolders.push(name); });
-    for (const folderName of orderedFolders) {
-      const tracks = grouped.get(folderName) || [];
-      let folderDone = 0;
-      let cursor = 0;
-      offlineProgressBusy(done,total,"Salvando " + folderName + " · 0/" + tracks.length);
-      async function worker() {
-        while (cursor < tracks.length) {
-          const song = tracks[cursor++];
-          const saved = await saveSongOffline(song);
-          if (saved) done++; else failed++;
-          folderDone++;
-          offlineProgressBusy(done,total,"Salvando " + folderName + " · " + folderDone + "/" + tracks.length + " (" + done + "/" + total + ")");
-        }
-      }
-      await Promise.all([worker(),worker(),worker(),worker()]);
-    }
-    const savedText = done + "/" + total + " músicas offline";
-    offlineProgress(done,total);
-    const bar = $("offlineProgress");
-    if (bar) bar.classList.remove("busy");
-    offlineStatus(failed ? savedText + " · " + failed + " pendentes" : savedText + " · pronto");
-  } catch (error) {
-    console.error("Falha ao preparar modo offline:",error);
-    const bar = $("offlineProgress");
-    if (bar) bar.classList.remove("busy");
-    offlineStatus(done ? "Carregamento pausado · " + done + "/" + total + " salvas" : "Não foi possível iniciar o modo offline");
-  } finally {
-    offlineSyncRunning = false;
-  }
+}
+function saveCatalogSnapshot(items) {
+  const snapshotSongs = (Array.isArray(items) ? items : songs).map(function(song) {
+    return {
+      key:safeText(song.key),
+      title:safeText(song.title),
+      artist:displayArtist(song.artist),
+      folder:safeText(song.folder),
+      audioUrl:safeText(song.audioUrl)
+    };
+  });
+  try {
+    localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify({version:1,lifetimeAccess:Boolean(lifetimeAccess),songs:snapshotSongs}));
+  } catch (_) {}
+}
+function showAuthenticationRequired() {
+  accountGateActive=true;
+  lifetimeAccess=false;streamingConfigured=false;
+  requestId++;audio.pause();audio.removeAttribute("src");audio.load();
+  if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl="";}
+  songs=[];folders=[];queue=[];activeFolder="";currentIndex=-1;
+  $("folderView").hidden=true;document.body.classList.remove("in-folder");
+  $("genreCards").hidden=false;
+  $("genreCards").innerHTML='<div class="loading-card">Entre ou crie uma conta para acessar a biblioteca MUSIC VIP.</div>';
+  $("trackCount").textContent="—";$("folderCount").textContent="—";$("folderTotal").textContent="Acesso para membros";
+  updateMarquee($("currentTitle"),"Acesse sua conta");
+  $("currentArtist").textContent="Entre para desbloquear sua música";
+  offlineStatus("Entre para acessar a biblioteca");
+  updateButtons();
 }
 async function loadCatalog() {
   await purgeLegacyMusicCacheOnce();
+  if(!getAuthToken()){
+    showAuthenticationRequired();
+    await clearOfflineMusic().catch(()=>{});
+    return;
+  }
   $("genreCards").innerHTML = '<div class="loading-card">Carregando sua biblioteca...</div>';
   try {
     const all = [];
     let cursor = "";
     let pageCount = 0;
+    let catalogAccess = null;
     do {
       const url = new URL(API);
       url.searchParams.set("limit","1000");
       if (cursor) url.searchParams.set("cursor",cursor);
-      const response = await fetch(url.toString(), {cache:"no-store"});
-      if (!response.ok) throw new Error("Catálogo respondeu HTTP " + response.status);
+      const headers = {};
+      const token = getAuthToken();
+      if (token) headers.Authorization = "Bearer " + token;
+      const response = await fetch(url.toString(), {headers:headers,cache:"no-store"});
+      if (!response.ok) {const error=new Error("Catálogo respondeu HTTP " + response.status);error.status=response.status;throw error;}
       const data = await response.json();
       if (!Array.isArray(data.songs)) throw new Error("Formato de catálogo inesperado");
+      if (data.access) catalogAccess = data.access;
       all.push.apply(all,data.songs);
       cursor = data.nextCursor || "";
       pageCount++;
       if (pageCount > 100) throw new Error("Paginação interrompida por segurança");
     } while (cursor);
+    lifetimeAccess = Boolean(catalogAccess && catalogAccess.lifetimeAccess);
+    streamingConfigured = Boolean(catalogAccess && catalogAccess.streamingConfigured);
 
     // Uma resposta vazia do servidor é definitiva: não ressuscite cópias antigas do aparelho.
     if (all.length === 0) {
@@ -319,48 +300,77 @@ async function loadCatalog() {
         title:title,
         artist:displayArtist(song.artist || "Music"),
         audioUrl:audioUrl,
-        folder:folderFromSong(Object.assign({},song,{audioUrl:audioUrl})),
+        streamUrl:safeText(song.streamUrl).trim(),
+        folder:safeText(song.folder || folderFromSong(Object.assign({},song,{audioUrl:audioUrl}))),
         _index:index
       });
     }).filter(Boolean).filter(function(song){ return !deletedSongs.has(song.audioUrl) && !deletedFolders.has(song.folder); }).map(function(song,index){ return Object.assign({},song,{_index:index}); });
 
     if (!songs.length) throw new Error("Nenhuma faixa válida foi encontrada.");
-    const counts = new Map();
-    const folderFirstSeen = new Map();
-    songs.forEach(function(song,index) {
-      counts.set(song.folder,(counts.get(song.folder)||0)+1);
-      if (!folderFirstSeen.has(song.folder)) folderFirstSeen.set(song.folder,index);
-    });
-    folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
-      .sort((a,b) => {
-        const priority = function(name) {
-          const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-          if (normalized.includes("mega funk")) return 1;
-          if (normalized.includes("funk") && !normalized.includes("eletro")) return 0;
-          return 2;
-        };
-        return priority(a.name) - priority(b.name) ||
-          ((folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER));
-      });
+    buildFolderList();
+    saveCatalogSnapshot();
     renderFolders();
-    try { localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify(songs)); } catch (_) {}
-    offlineStatus("Preparando músicas offline…");
-    setTimeout(startOfflineSync,800);
+    offlineStatus("Streaming protegido · reprodução online");
     $("trackCount").textContent = songs.length.toLocaleString("pt-BR");
     $("folderCount").textContent = folders.length.toLocaleString("pt-BR");
     $("folderTotal").textContent = folders.length + " pastas disponíveis";
   } catch (error) {
     console.error("Falha ao carregar catálogo:",error);
-    try {
-      const saved = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null");
-      if (Array.isArray(saved) && saved.length) {
-        songs = saved; const counts = new Map(); songs.forEach(song => counts.set(song.folder,(counts.get(song.folder)||0)+1));
-        folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]})); renderFolders();
-        $("trackCount").textContent = songs.length.toLocaleString("pt-BR"); $("folderCount").textContent = folders.length.toLocaleString("pt-BR"); $("folderTotal").textContent = folders.length + " pastas disponíveis"; offlineStatus("Catálogo salvo · preparando músicas offline…"); setTimeout(startOfflineSync,800); return;
-      }
-    } catch (_) {}
-    $("genreCards").innerHTML = '<div class="error-card"><strong>Não conseguimos conectar à biblioteca.</strong><span>Abra o Music uma vez com internet para preparar o modo offline.</span><button id="retryCatalog" type="button">Tentar novamente</button></div>';
-    $("trackCount").textContent = "Indisponível"; $("folderTotal").textContent = "Catálogo indisponível";
+    if(error.status===401||error.status===403){
+      rememberAccountUse();
+      setAuthToken("");
+      lifetimeAccess=false;
+      await clearOfflineMusic().catch(()=>{});
+      showAuthenticationRequired();
+      openAccount(initialAccountMode());
+      $("accountFeedback").textContent="Sua sessão expirou. Entre novamente para acessar a biblioteca.";
+      return;
+    }
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null"); } catch (_) {}
+    const cachedSongs = Array.isArray(cached) ? cached : (cached && Array.isArray(cached.songs) ? cached.songs : []);
+    const deletedSongs = getDeletedSongs();
+    const deletedFolders = getDeletedFolders();
+    lifetimeAccess = false;
+    streamingConfigured = false;
+    if(getAuthToken()){
+      $("accountPlanDisplay").textContent="Plano: conecte-se para validar o acesso";
+      $("premiumOffer").hidden=false;
+      $("premiumActive").hidden=true;
+      $("accountBtn").textContent="Minha conta";
+    }
+    requestId++;audio.pause();audio.removeAttribute("src");audio.load();
+    if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl="";}
+    currentIndex=-1;queue=[];activeFolder="";
+    songs = cachedSongs.map(function(song,index) {
+      const audioUrl = safeText(song.audioUrl).trim();
+      const title = safeText(song.title).trim();
+      if (!audioUrl || !title) return null;
+      const folder = safeText(song.folder || folderFromSong(Object.assign({},song,{audioUrl:audioUrl})));
+      return Object.assign({},song,{title:title,artist:displayArtist(song.artist),folder:folder,audioUrl:audioUrl,streamUrl:"",_index:index});
+    }).filter(Boolean).filter(function(song) {
+      return !deletedSongs.has(song.audioUrl) && !deletedFolders.has(song.folder);
+    }).map(function(song,index){ return Object.assign({},song,{_index:index}); });
+    if (songs.length) {
+      buildFolderList();
+      $("folderView").hidden = true;
+      document.body.classList.remove("in-folder");
+      $("genreCards").hidden = false;
+      renderFolders();
+      $("trackCount").textContent = songs.length.toLocaleString("pt-BR");
+      $("folderCount").textContent = folders.length.toLocaleString("pt-BR");
+      $("folderTotal").textContent = folders.length + " pastas disponíveis";
+      offlineStatus(navigator.onLine ? "Servidor indisponível · áudio bloqueado até validar" : "Sem internet · áudio indisponível");
+      updateButtons();
+      return;
+    }
+    lifetimeAccess = false;
+    songs=[];folders=[];queue=[];activeFolder="";currentIndex=-1;
+    $("folderView").hidden=true;document.body.classList.remove("in-folder");
+    $("genreCards").hidden=false;
+    $("genreCards").innerHTML = '<div class="error-card"><strong>Não conseguimos conectar à biblioteca.</strong><span>Conecte-se à internet para carregar o catálogo e validar seu acesso. A reprodução de áudio exige uma sessão e autorização ativas no servidor.</span><button id="retryCatalog" type="button">Tentar novamente</button></div>';
+    $("trackCount").textContent = "Indisponível"; $("folderCount").textContent="0"; $("folderTotal").textContent = "Catálogo indisponível";
+    updateButtons();
   }
 }
 function renderFolders() {
@@ -371,11 +381,14 @@ function renderFolders() {
     return;
   }
   $("genreCards").innerHTML = filteredFolders.map(function(folder,index) {
+    const badgeText = lifetimeAccess ? "ACESSO LIBERADO" : "DESBLOQUEAR";
+    const badgeClass = lifetimeAccess ? "folder-access-badge" : "folder-access-badge is-locked";
     return '<div class="folder-card" data-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" style="--folder-color:' + palettes[index % palettes.length] + '">' +
       '<div class="folder-menu-wrap"><button class="folder-menu" type="button" data-folder-menu="' + escapeHtml(folder.name) + '" aria-label="Opções da pasta ' + escapeHtml(folder.name) + '" title="Opções da pasta">⋯</button><div class="folder-menu-popover" data-folder-popover="' + escapeHtml(folder.name) + '" hidden><button type="button" data-delete-folder="' + escapeHtml(folder.name) + '">Excluir</button></div></div>' +
       '<span class="folder-art"><span>♫</span><i></i></span>' +
       '<span class="folder-name">' + escapeHtml(folder.name) + '</span>' +
       '<span class="folder-count">' + folder.count.toLocaleString("pt-BR") + (folder.count === 1 ? " música" : " músicas") + '</span>' +
+      '<span class="' + badgeClass + '">' + badgeText + '</span>' +
       '<span class="folder-arrow">▶</span><span class="folder-download" data-download-folder="' + escapeHtml(folder.name) + '" role="button" tabindex="0" title="Baixar pasta" aria-label="Baixar pasta">⇩</span></div>';
   }).join("");
 }
@@ -385,17 +398,23 @@ function safeFileName(value) {
 async function downloadFolder(folderName) {
   const tracks = songs.filter(song => song.folder === folderName);
   if (!tracks.length || !window.fflate) return;
-  if (!window.confirm("Baixar " + tracks.length + " músicas da pasta “" + folderName + "” em um arquivo ZIP?")) return;
+  if (!lifetimeAccess) { requestPremiumAccess("Para baixar esta pasta, desbloqueie o acesso vitalício por R$ 15,00."); return; }
+  if (!confirm("Baixar " + tracks.length + " músicas da pasta “" + folderName + "” em um arquivo ZIP?")) return;
   const files = {};
   try {
     for (let i=0; i<tracks.length; i++) {
       showToast("Preparando download: " + (i+1) + "/" + tracks.length);
-      const response = await fetch(tracks[i].audioUrl,{mode:"cors",cache:"no-store"});
+      if (!canAccessSong(tracks[i])) throw new Error("O acesso mudou durante o download");
+      if (!tracks[i].streamUrl) throw new Error("Streaming seguro indisponível");
+      const response = await fetch(tracks[i].streamUrl,{mode:"cors",cache:"no-store"});
       if (!response.ok) throw new Error("HTTP " + response.status);
       const path = new URL(tracks[i].audioUrl).pathname;
       const extension = (path.match(/\.[a-z0-9]+$/i) || [".mp3"])[0];
-      files[String(i+1).padStart(3,"0") + " - " + safeFileName(tracks[i].title) + extension] = new Uint8Array(await response.arrayBuffer());
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (!canAccessSong(tracks[i])) throw new Error("O acesso mudou durante o download");
+      files[String(i+1).padStart(3,"0") + " - " + safeFileName(tracks[i].title) + extension] = bytes;
     }
+    if (!tracks.every(canAccessSong)) throw new Error("O acesso mudou durante o download");
     showToast("Compactando a pasta…");
     const zip = window.fflate.zipSync(files,{level:0});
     const url = URL.createObjectURL(new Blob([zip],{type:"application/zip"}));
@@ -409,6 +428,10 @@ async function downloadFolder(folderName) {
   }
 }
 function openFolder(name, shouldPlay) {
+  if (!lifetimeAccess) {
+    requestPremiumAccess("Esta pasta está bloqueada. Entre na sua conta para ver o plano vitalício.");
+    return;
+  }
   activeFolder = name;
   document.body.classList.add("in-folder");
   queue = songs.filter(song => song.folder === name).map(song => song._index);
@@ -435,11 +458,13 @@ function renderSongList() {
   $("songList").innerHTML = shown.map(function(songIndex,position) {
     const song = songs[songIndex];
     const playing = songIndex === currentIndex && !audio.paused;
+    const unlocked = canAccessSong(song);
     const color = palettes[position % palettes.length];
-    return '<button type="button" class="song-row ' + (playing ? "playing" : "") + '" data-song-index="' + songIndex + '">' +
+    return '<button type="button" class="song-row ' + (playing ? "playing " : "") + (unlocked ? "" : "is-locked") + '" data-song-index="' + songIndex + '">' +
       '<span class="song-number">' + String(position+1).padStart(2,"0") + '</span>' +
       '<span class="song-cover" style="--cover-color:' + color + '">♫</span>' +
       '<span class="song-info"><strong>' + escapeHtml(song.title) + '</strong><small>' + escapeHtml(song.artist) + '</small></span>' +
+      (unlocked ? '' : '<span class="song-access-badge is-locked">ACESSO VITALÍCIO</span>') +
       '<span class="song-play-icon">' + (playing ? "Ⅱ" : "▶") + '</span></button>';
   }).join("");
   const remaining = queue.length - shown.length;
@@ -481,9 +506,9 @@ function deleteCurrentSong() {
   queue = [];
   const folderToKeep = activeFolder;
   try {
-    const remaining = songs.filter(function(item){ return item.audioUrl !== deletedUrl; })
+  const remaining = songs.filter(function(item){ return item.audioUrl !== deletedUrl; })
       .map(function(item,index){ return Object.assign({},item,{_index:index}); });
-    localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify(remaining));
+    saveCatalogSnapshot(remaining);
   } catch (_) {}
   showToast("Música excluída deste aparelho");
   loadCatalog().then(function() {
@@ -509,7 +534,7 @@ function deleteFolder(folderName) {
   }
   const remaining = songs.filter(function(song){ return song.folder !== folderName; })
     .map(function(song,index){ return Object.assign({},song,{_index:index}); });
-  try { localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify(remaining)); } catch (_) {}
+  saveCatalogSnapshot(remaining);
   showToast("Pasta excluída deste aparelho");
   loadCatalog();
 }
@@ -527,6 +552,10 @@ function switchFolder(direction) {
   let currentFolderIndex = folders.findIndex(folder => folder.name === activeFolder);
   if (currentFolderIndex < 0) currentFolderIndex = 0;
   const nextIndex = (currentFolderIndex + direction + folders.length) % folders.length;
+  if (!lifetimeAccess) {
+    requestPremiumAccess("Esta pasta está bloqueada. Entre na sua conta para ver o plano vitalício.");
+    return;
+  }
   openFolder(folders[nextIndex].name,true);
   renderDrawer();
   showToast("Pasta: " + folders[nextIndex].name);
@@ -548,6 +577,8 @@ function nextSongIndex(direction) {
 function playSong(index) {
   const song = songs[index];
   if (!song) return;
+  if (!getAuthToken() || !lifetimeAccess) { requestPremiumAccess("Esta música está bloqueada. Entre ou crie sua conta para ver o plano vitalício."); return; }
+  if (navigator.onLine === false || !song.streamUrl) { showToast("Conecte-se para validar o acesso e reproduzir esta música."); return; }
   const id = ++requestId;
   currentIndex = index;
   if (!queue.includes(index)) { activeFolder = song.folder; queue = songs.filter(item => item.folder === activeFolder).map(item => item._index); }
@@ -559,9 +590,7 @@ function playSong(index) {
   if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
   activeObjectUrl = "";
 
-  // Começa imediatamente pela URL online, sem aguardar IndexedDB. Isso preserva
-  // a autorização do toque do usuário no Android e evita ficar em 0:00.
-  audio.src = song.audioUrl;
+  audio.src = song.streamUrl;
   audio.load();
   const playRequest = audio.play();
   if (playRequest && typeof playRequest.then === "function") {
@@ -570,37 +599,51 @@ function playSong(index) {
     }).catch(function(error) {
       if (id !== requestId) return;
       console.warn("Reprodução online falhou:",error);
-      tryOfflinePlayback(song,id);
+      recoverMediaFailure(song,id);
     });
   }
-
-  // O arquivo offline é consultado em paralelo, mas nunca bloqueia o primeiro play.
-  // Ele será usado se o dispositivo estiver sem internet ou se a fonte online falhar.
-  if (window.indexedDB) offlineGet(song.audioUrl).then(function(blob) {
-    if (!blob || id !== requestId || navigator.onLine !== false || !audio.paused) return;
-    tryOfflineBlob(blob,song,id);
-  }).catch(function(error) {
-    console.warn("Não foi possível consultar a cópia offline:",error);
-    if (id === requestId && navigator.onLine === false) showToast("Esta música ainda não foi salva offline.");
-  });
 }
-function tryOfflinePlayback(song,id) {
-  if (!window.indexedDB) { showToast("Não foi possível carregar esta música."); return; }
-  offlineGet(song.audioUrl).then(function(blob) {
-    if (!blob || id !== requestId) { showToast("Não foi possível carregar esta música."); return; }
-    tryOfflineBlob(blob,song,id);
-  }).catch(function() { if (id === requestId) showToast("Não foi possível carregar esta música."); });
-}
-function tryOfflineBlob(blob,song,id) {
-  if (id !== requestId) return;
-  if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl);
-  activeObjectUrl = URL.createObjectURL(blob);
-  audio.src = activeObjectUrl;
-  audio.load();
-  const retry = audio.play();
-  if (retry && typeof retry.catch === "function") retry.catch(function(error) {
-    if (id === requestId) { console.warn("Reprodução offline falhou:",error); showToast("Toque novamente para reproduzir esta música."); }
-  });
+async function recoverMediaFailure(song,id) {
+  if (!song || id !== requestId || mediaRecoveryId === id) return;
+  mediaRecoveryId = id;
+  try {
+    if (getAuthToken() && navigator.onLine !== false) {
+      try {
+        const account = await authRequest("/auth/me","GET");
+        if (id !== requestId) return;
+        const wasLifetime = lifetimeAccess;
+        lifetimeAccess = Boolean(account.lifetimeAccess);
+        $("accountPlanDisplay").textContent = lifetimeAccess ? "Plano: acesso vitalício ativo" : "Plano: ainda sem acesso vitalício";
+        $("premiumOffer").hidden = lifetimeAccess;
+        $("premiumActive").hidden = !lifetimeAccess;
+        $("accountBtn").textContent = lifetimeAccess ? "Minha conta · VIP" : "Minha conta";
+        if (wasLifetime && !lifetimeAccess) {
+          accountGateActive=false;
+          requestId++;audio.pause();audio.removeAttribute("src");audio.load();
+          if (activeObjectUrl) { URL.revokeObjectURL(activeObjectUrl); activeObjectUrl = ""; }
+          currentIndex = -1;queue = [];activeFolder = "";
+          await clearOfflineMusic().catch(()=>{});
+          renderFolders();renderSongListIfOpen();saveCatalogSnapshot();
+          showToast("O acesso vitalício não está ativo. Confira o plano de R$ 15,00.");
+          openAccount("profile");
+          return;
+        }
+      } catch (error) {
+        if (id !== requestId) return;
+        if (error.status === 401 || error.status === 403) {
+          await refreshAccount();
+          showToast("Sua sessão expirou. Entre novamente para continuar.");
+          return;
+        }
+        console.warn("Não foi possível validar a sessão após erro de áudio:",error);
+      }
+    }
+    if (id === requestId) showToast(navigator.onLine === false
+      ? "Sem conexão: a reprodução protegida exige internet."
+      : "Não foi possível acessar o áudio protegido. Tente novamente.");
+  } finally {
+    if (mediaRecoveryId === id) mediaRecoveryId = -1;
+  }
 }
 function renderSongListIfOpen() {
   if (!$("folderView").hidden) renderSongList();
@@ -612,8 +655,8 @@ function togglePlay() {
     return;
   }
   if (audio.paused) {
-    // Após ficar em segundo plano, o navegador pode descartar a fonte/blob atual.
-    // Nesse caso, recarrega a faixa pelo IndexedDB antes de tentar reproduzir.
+    if (navigator.onLine === false) { showToast("Conecte-se à internet para reproduzir áudio protegido."); return; }
+    if (!canAccessSong(songs[currentIndex])) { playSong(currentIndex); return; }
     if (!audio.src || audio.readyState === 0) {
       playSong(currentIndex);
       return;
@@ -750,59 +793,190 @@ audio.addEventListener("ended",function() {
 });
 audio.addEventListener("play",function(){updateButtons();updateMediaState("playing");renderSongListIfOpen();});
 audio.addEventListener("pause",function(){updateButtons();updateMediaState("paused");renderSongListIfOpen();});
-audio.addEventListener("error",function(){showToast("Erro ao carregar o áudio. Pulando para a próxima faixa.");});
+audio.addEventListener("error",function(){
+  const song=songs[currentIndex];
+  if(song)recoverMediaFailure(song,requestId);
+  else showToast("Erro ao carregar o áudio.");
+});
 document.addEventListener("visibilitychange",function(){
   if (!document.hidden && currentIndex >= 0) updateMediaMetadata(songs[currentIndex]);
-  if (!document.hidden) setTimeout(startOfflineSync,500);
 });
-window.addEventListener("online",function(){ offlineStatus("Internet recuperada · retomando carregamento…"); setTimeout(startOfflineSync,300); });
+window.addEventListener("online",function(){ offlineStatus("Internet recuperada · validando catálogo…"); if(getAuthToken()) loadCatalog(); });
 
 const AUTH_BASE = API.replace(/\/catalog(?:\?.*)?$/, "");
 const AUTH_TOKEN_KEY = "music-vip-session-v1";
+const ACCOUNT_USED_KEY = "music-vip-account-used-v1";
 let accountMode = "login";
+let accountGateActive = true;
 function getAuthToken(){try{return localStorage.getItem(AUTH_TOKEN_KEY)||"";}catch(_){return "";}}
 function setAuthToken(token){try{if(token)localStorage.setItem(AUTH_TOKEN_KEY,token);else localStorage.removeItem(AUTH_TOKEN_KEY);}catch(_){}}
+function initialAccountMode(){try{return localStorage.getItem(ACCOUNT_USED_KEY)==="1"?"login":"register";}catch(_){return "register";}}
+function rememberAccountUse(){try{localStorage.setItem(ACCOUNT_USED_KEY,"1");}catch(_){}}
 function openAccount(mode){
-  accountMode = mode || (getAuthToken() ? "profile" : "login");
+  accountMode = mode || (getAuthToken() ? "profile" : initialAccountMode());
   const modal = $("accountModal"); if(!modal)return;
   modal.hidden = false;
+  $("accountClose").hidden = accountGateActive;
   $("accountForm").hidden = accountMode === "profile";
   $("accountProfile").hidden = accountMode !== "profile";
   $("accountSwitch").hidden = accountMode === "profile";
   $("accountTitle").textContent = accountMode === "register" ? "Criar sua conta" : accountMode === "profile" ? "Minha conta" : "Acesse sua conta";
-  $("accountDescription").textContent = accountMode === "register" ? "Cadastre-se com e-mail e senha." : accountMode === "profile" ? "Seus dados de acesso." : "Entre para acessar sua conta MUSIC VIP.";
+  $("accountDescription").textContent = accountMode === "register" ? "Cadastre-se com e-mail e senha." : accountMode === "profile" ? (pendingAccessMessage || "Seus dados de acesso.") : "Entre para acessar sua conta MUSIC VIP.";
   $("accountSubmit").textContent = accountMode === "register" ? "Criar conta" : "Entrar";
+  $("accountPassword").autocomplete = accountMode === "register" ? "new-password" : "current-password";
   $("accountSwitch").textContent = accountMode === "register" ? "Já tem conta? Entrar" : "Ainda não tem conta? Criar conta";
   $("accountFeedback").textContent = "";
   if(accountMode === "profile") refreshAccount();
 }
-function closeAccount(){const modal=$("accountModal");if(modal)modal.hidden=true;}
+function closeAccount(){if(accountGateActive)return;const modal=$("accountModal");if(modal)modal.hidden=true;}
 async function authRequest(path,method,body){
   const headers={"Content-Type":"application/json"};
   const token=getAuthToken(); if(token)headers.Authorization="Bearer "+token;
   const response=await fetch(AUTH_BASE+path,{method,headers,body:body?JSON.stringify(body):undefined,cache:"no-store"});
   let data={};try{data=await response.json();}catch(_){}
-  if(!response.ok)throw new Error(data.error||"Não foi possível concluir. Tente novamente.");
+  if(!response.ok){const error=new Error(data.error||"Não foi possível concluir. Tente novamente.");error.status=response.status;throw error;}
   return data;
 }
 async function refreshAccount(){
   try{
     const data=await authRequest("/auth/me","GET");
+    rememberAccountUse();
+    accountGateActive=false;
+    $("accountClose").hidden=false;
+    const wasLifetime=lifetimeAccess;
+    lifetimeAccess=Boolean(data.lifetimeAccess);
     $("accountEmailDisplay").textContent="E-mail: "+data.user.email;
-    $("accountPlanDisplay").textContent="Plano: ainda sem assinatura ativa";
-    $("accountBtn").textContent="Minha conta";
+    $("accountPlanDisplay").textContent=lifetimeAccess?"Plano: acesso vitalício ativo":"Plano: ainda sem acesso vitalício";
+    $("premiumOffer").hidden=lifetimeAccess;
+    $("premiumActive").hidden=!lifetimeAccess;
+    $("accountBtn").textContent=lifetimeAccess?"Minha conta · VIP":"Minha conta";
+    if(wasLifetime!==lifetimeAccess){
+      renderFolders();renderSongListIfOpen();
+      if(lifetimeAccess) await loadCatalog();
+      else {audio.pause();audio.removeAttribute("src");audio.load();await clearOfflineMusic();saveCatalogSnapshot();}
+    }
+    try{
+      const payment=await authRequest("/payments/status","GET");
+      if(payment.lifetimeAccess){
+        const wasLifetime=lifetimeAccess;
+        lifetimeAccess=true;$("accountPlanDisplay").textContent="Plano: acesso vitalício ativo";
+        $("premiumOffer").hidden=true;$("premiumActive").hidden=false;
+        $("accountBtn").textContent="Minha conta · VIP";
+        if(!wasLifetime){renderFolders();renderSongListIfOpen();await loadCatalog();}
+      }else if(payment.paymentStatus==="pending"){
+        $("paymentFeedback").textContent="Pagamento pendente de confirmação. O acesso será liberado somente após validação pelo servidor.";
+      }
+    }catch(_){ }
   }catch(error){
+    if(error.status!==401&&error.status!==403){
+      const hadLifetimeAccess=lifetimeAccess;
+      lifetimeAccess=false;
+      $("accountPlanDisplay").textContent="Plano: conecte-se para validar o acesso";
+      $("premiumOffer").hidden=false;$("premiumActive").hidden=true;
+      $("accountBtn").textContent="Minha conta";
+      $("accountFeedback").textContent="Não foi possível consultar sua conta agora. Conecte-se para validar a sessão e o acesso.";
+      if(hadLifetimeAccess){
+        requestId++;audio.pause();audio.removeAttribute("src");audio.load();
+        if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl="";}
+        currentIndex=-1;queue=[];activeFolder="";
+        await clearOfflineMusic().catch(()=>{});
+        renderFolders();renderSongListIfOpen();saveCatalogSnapshot();
+      }
+      return;
+    }
     setAuthToken("");
+    rememberAccountUse();
+    accountGateActive=true;
+    lifetimeAccess=false;
     $("accountBtn").textContent="Entrar";
     $("accountFeedback").textContent="Sua sessão expirou. Entre novamente.";
-    accountMode="login";$("accountForm").hidden=false;$("accountProfile").hidden=true;$("accountSwitch").hidden=false;
-    $("accountTitle").textContent="Acesse sua conta";
+    openAccount("login");
+    $("accountFeedback").textContent="Sua sessão expirou. Entre novamente.";
+    requestId++;audio.pause();audio.removeAttribute("src");audio.load();
+    if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl="";}
+    currentIndex=-1;queue=[];activeFolder="";
+    await clearOfflineMusic().catch(()=>{});
+    renderFolders();renderSongListIfOpen();saveCatalogSnapshot();
   }
 }
-$("accountBtn").addEventListener("click",function(){openAccount(getAuthToken()?"profile":"login");});
+async function checkPaymentAvailability(){
+  const button=$("premiumBuy");
+  if(!button)return;
+  button.disabled=true;
+  try{
+    const response=await fetch(AUTH_BASE+"/health",{cache:"no-store"});
+    const data=await response.json().catch(()=>({}));
+    paymentsConfigured=Boolean(response.ok&&data.paymentsConfigured);
+    button.disabled=!paymentsConfigured;
+    if(!paymentsConfigured)$("paymentFeedback").textContent="Checkout temporariamente indisponível. Tente novamente mais tarde.";
+    else if($("paymentFeedback").textContent.includes("Checkout temporariamente"))$("paymentFeedback").textContent="";
+  }catch(_){
+    paymentsConfigured=false;button.disabled=true;
+    $("paymentFeedback").textContent="Checkout temporariamente indisponível. Tente novamente mais tarde.";
+  }
+}
+async function startCheckout(){
+  if(!getAuthToken()){requestPremiumAccess("Entre ou crie sua conta para comprar o acesso vitalício.");return;}
+  if(lifetimeAccess){await refreshAccount();return;}
+  if(!paymentsConfigured){$("paymentFeedback").textContent="Checkout temporariamente indisponível. Tente novamente mais tarde.";return;}
+  const button=$("premiumBuy");button.disabled=true;button.textContent="Preparando pagamento…";
+  try{
+    const data=await authRequest("/payments/checkout","POST",{});
+    if(data.lifetimeAccess){await refreshAccount();return;}
+    if(!data.checkoutUrl)throw new Error("O Mercado Pago não retornou o link de pagamento.");
+    window.location.assign(data.checkoutUrl);
+  }catch(error){
+    $("paymentFeedback").textContent=error.message;
+    button.disabled=!paymentsConfigured;button.textContent="Desbloquear com Mercado Pago";
+  }
+}
+async function handlePaymentReturn(){
+  const returnState=new URLSearchParams(window.location.search).get("mp_return");
+  if(!returnState)return;
+  window.history.replaceState(null,"",window.location.pathname+window.location.hash);
+  if(!getAuthToken()){
+    openAccount("login");
+    $("accountDescription").textContent="Entre na conta usada no pagamento para consultar a confirmação.";
+    return;
+  }
+  openAccount("profile");
+  const feedback=$("paymentFeedback");
+  if(returnState==="failure"){
+    feedback.textContent="O pagamento não foi concluído. Você pode tentar novamente.";
+    return;
+  }
+  if(returnState==="pending"){
+    feedback.textContent="Pagamento pendente. O acesso só será liberado após confirmação do servidor.";
+    return;
+  }
+  if(returnState!=="success")return;
+  feedback.textContent="Conferindo a confirmação do pagamento…";
+  let lastStatus=null;
+  for(let attempt=0;attempt<7;attempt++){
+    try{
+      const status=await authRequest("/payments/status","GET");
+      lastStatus=status.paymentStatus;
+      if(status.lifetimeAccess){
+        lifetimeAccess=true;
+        $("accountPlanDisplay").textContent="Plano: acesso vitalício ativo";
+        $("premiumOffer").hidden=true;$("premiumActive").hidden=false;
+        $("accountBtn").textContent="Minha conta · VIP";
+        await loadCatalog();
+        feedback.textContent="Pagamento aprovado e acesso vitalício confirmado.";
+        return;
+      }
+    }catch(_){}
+    if(attempt<6)await new Promise(resolve=>setTimeout(resolve,2000));
+  }
+  feedback.textContent=lastStatus==="approved"
+    ? "O Mercado Pago informou aprovação, mas o servidor ainda não confirmou o acesso. Tente verificar novamente em instantes."
+    : "Pagamento recebido, mas ainda sem confirmação do servidor. O acesso permanece bloqueado até a validação automática.";
+}
+$("accountBtn").addEventListener("click",function(){openAccount(getAuthToken()?"profile":initialAccountMode());});
 $("accountClose").addEventListener("click",closeAccount);
 $("accountBackdrop").addEventListener("click",closeAccount);
 $("accountSwitch").addEventListener("click",function(){openAccount(accountMode==="register"?"login":"register");});
+$("premiumBuy").addEventListener("click",startCheckout);
 $("accountForm").addEventListener("submit",async function(event){
   event.preventDefault();
   const email=$("accountEmail").value.trim().toLowerCase();
@@ -813,21 +987,37 @@ $("accountForm").addEventListener("submit",async function(event){
     const route=accountMode==="register"?"/auth/register":"/auth/login";
     const data=await authRequest(route,"POST",{email,password});
     setAuthToken(data.token);
+    rememberAccountUse();
     $("accountPassword").value="";
     $("accountFeedback").textContent=accountMode==="register"?"Conta criada com sucesso!":"Login realizado com sucesso!";
     $("accountBtn").textContent="Minha conta";
-    setTimeout(function(){openAccount("profile");},500);
+    await loadCatalog();
+    openAccount("profile");
   }catch(error){$("accountFeedback").textContent=error.message;}
   finally{submit.disabled=false;submit.textContent=accountMode==="register"?"Criar conta":"Entrar";}
 });
 $("accountLogout").addEventListener("click",async function(){
-  try{await authRequest("/auth/logout","POST",{});}catch(_){}
-  setAuthToken("");$("accountBtn").textContent="Entrar";openAccount("login");
+  rememberAccountUse();
+  authRequest("/auth/logout","POST",{}).catch(()=>{});
+  requestId++;audio.pause();audio.removeAttribute("src");audio.load();
+  if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl="";}
+  currentIndex=-1;queue=[];activeFolder="";
+  setAuthToken("");accountGateActive=true;lifetimeAccess=false;$("accountBtn").textContent="Entrar";
+  await clearOfflineMusic().catch(()=>{});saveCatalogSnapshot();updateButtons();openAccount("login");
   $("accountFeedback").textContent="Você saiu da sua conta.";
+  loadCatalog();
 });
-if(getAuthToken())$("accountBtn").textContent="Minha conta";
+if(getAuthToken()){
+  $("accountBtn").textContent="Minha conta";
+  openAccount("profile");
+}else{
+  $("accountBtn").textContent=initialAccountMode()==="register"?"Criar conta":"Entrar";
+  openAccount(initialAccountMode());
+}
 
 setupMediaSession();
 updateButtons();
+checkPaymentAvailability();
 loadCatalog();
+handlePaymentReturn();
 })();

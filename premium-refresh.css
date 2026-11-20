@@ -382,6 +382,38 @@ body {
 .account-switch { color: var(--accent-bright) !important; }
 .account-feedback { color: #d2ddd5 !important; }
 
+.premium-offer {
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid rgba(169,203,189,.28);
+  border-radius: 17px;
+  background: linear-gradient(145deg, rgba(169,203,189,.12), rgba(255,255,255,.035));
+}
+.premium-offer-kicker { display: block; color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: 1.5px; }
+.premium-offer-price { display: block; margin-top: 7px; color: var(--accent-bright); font: 700 31px/1 Outfit, sans-serif; }
+.premium-offer > p { margin: 9px 0 0; color: #bdc9c1 !important; font-size: 12px !important; line-height: 1.55; }
+.premium-offer .premium-offer-button { margin-top: 15px; }
+.premium-offer .payment-feedback { min-height: 0; margin-bottom: 0; color: #d6e4da !important; }
+.premium-active { margin: 16px 0; padding: 16px; border: 1px solid rgba(169,203,189,.28); border-radius: 16px; background: rgba(169,203,189,.09); }
+.premium-active strong { color: var(--accent-bright); }
+.premium-active p { margin: 7px 0 0; }
+.folder-access-badge, .song-access-badge {
+  border: 1px solid rgba(169,203,189,.28);
+  border-radius: 999px;
+  background: rgba(169,203,189,.1);
+  color: var(--accent-bright);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .7px;
+  line-height: 1;
+  padding: 6px 8px;
+}
+.folder-access-badge { position: static; display: inline-flex; align-self: flex-start; width: max-content; margin-top: 10px; }
+.folder-access-badge.is-locked, .song-access-badge.is-locked { border-color: rgba(226,235,229,.15); background: rgba(255,255,255,.055); color: #aeb9b2; }
+.song-access-badge { margin-left: auto; }
+.song-row.is-locked .song-play-icon { color: #aab5ad; background: rgba(255,255,255,.045); }
+.song-row.is-locked .song-info strong { color: #bec7c1; }
+
 button:focus-visible, a:focus-visible, input:focus-visible {
   outline: 2px solid rgba(192, 223, 205, .85);
   outline-offset: 3px;

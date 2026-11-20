@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=99">
-<link rel="stylesheet" href="premium-refresh.css?v=2">
+<link rel="stylesheet" href="premium-refresh.css?v=3">
 <title>MUSIC VIP — Sua música, seu ritmo</title>
 </head>
 <body>
@@ -26,7 +26,7 @@
   <header class="topbar">
     <a class="brand" href="./" aria-label="Music início">
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-      <span class="brand-text"><span class="brand-name">MUSIC</span><span class="offline-progress-label" id="offlineProgressLabel">Carregando músicas offline…</span></span>
+      <span class="brand-text"><span class="brand-name">MUSIC</span><span class="offline-progress-label" id="offlineProgressLabel">STREAMING PROTEGIDO</span></span>
     </a>
     <div class="top-status"><span class="live-dot"></span><span>SEU SOM, SEM LIMITES</span><i>PREMIUM</i><button class="account-open-btn" id="accountBtn" type="button">Entrar</button></div>
   </header>
@@ -87,7 +87,7 @@
     </div>
     <div class="progress-row"><span id="currentTime">0:00</span><input id="progress" type="range" min="0" max="100" value="0" aria-label="Progresso da música"><span id="duration">0:00</span></div>
   </div>
-  <div class="player-right"><span>🔊</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"><span class="offline-status" id="offlineStatus">Offline não preparado</span></div>
+  <div class="player-right"><span>🔊</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"><span class="offline-status" id="offlineStatus">Áudio online protegido</span></div>
   <audio id="audio" preload="auto"></audio>
 </footer>
 <section class="player-drawer" id="playerDrawer" hidden aria-label="Player Music">
@@ -130,7 +130,7 @@
       <button class="account-close" id="accountClose" type="button" aria-label="Fechar">×</button>
       <div class="account-brand">MUSIC <span>VIP</span></div>
       <h2 id="accountTitle">Acesse sua conta</h2>
-      <p id="accountDescription">Entre ou crie sua conta para continuar.</p>
+      <p id="accountDescription">Crie sua conta ou entre para acessar o MUSIC VIP.</p>
       <form id="accountForm">
         <label for="accountEmail">E-mail</label>
         <input id="accountEmail" type="email" autocomplete="email" required maxlength="254" placeholder="seu@email.com">
@@ -142,7 +142,19 @@
       <button class="account-switch" id="accountSwitch" type="button">Ainda não tem conta? Criar conta</button>
       <div class="account-profile" id="accountProfile" hidden>
         <p id="accountEmailDisplay"></p>
-        <p id="accountPlanDisplay">Plano: aguardando assinatura</p>
+        <p id="accountPlanDisplay">Plano: ainda sem acesso vitalício</p>
+        <div class="premium-offer" id="premiumOffer">
+          <span class="premium-offer-kicker">PLANO VITALÍCIO</span>
+          <strong class="premium-offer-price">R$ 15,00</strong>
+          <p>Pagamento único. Sem mensalidade. Acesso vitalício à biblioteca MUSIC VIP.</p>
+          <p>Pagamento protegido pelo Mercado Pago. As formas disponíveis aparecem no checkout.</p>
+          <button class="account-submit premium-offer-button" id="premiumBuy" type="button">Desbloquear com Mercado Pago</button>
+          <p class="payment-feedback" id="paymentFeedback" role="status" aria-live="polite"></p>
+        </div>
+        <div class="premium-active" id="premiumActive" hidden>
+          <strong>Acesso vitalício ativo</strong>
+          <p>Sua biblioteca completa está desbloqueada.</p>
+        </div>
         <button class="account-submit" id="accountLogout" type="button">Sair da conta</button>
       </div>
     </div>
@@ -164,7 +176,7 @@
   </style>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=100"></script>
+<script src="app.js?v=103"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>

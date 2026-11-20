@@ -1,5 +1,5 @@
-const CACHE_NAME = 'music-premium-v85';
-const APP_SHELL = ['./','./index.html','./style.css?v=99','./premium-refresh.css?v=2','./app.js?v=100','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
+const CACHE_NAME = 'music-premium-v88-stream-only';
+const APP_SHELL = ['./','./index.html','./style.css?v=99','./premium-refresh.css?v=3','./app.js?v=103','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
@@ -11,7 +11,8 @@ self.addEventListener('fetch',event=>{
  if(req.method!=='GET') return;
  const url=new URL(req.url);
  if(url.origin!==self.location.origin) return;
- const isAppFile=url.pathname.endsWith('/')||/\\.(html|css|js|webmanifest)$/.test(url.pathname);
+ if(req.headers.has('range')||/\/stream(?:\/|$)/i.test(url.pathname)||/\.(mp3|m4a|aac|ogg|wav|flac|opus)$/i.test(url.pathname)) return;
+ const isAppFile=url.pathname.endsWith('/')||/\.(html|css|js|webmanifest)$/.test(url.pathname);
  if(isAppFile){
   event.respondWith(fetch(req,{cache:'no-store'}).then(response=>{
    if(response.ok){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(req,copy));}
