@@ -1,5 +1,5 @@
-const CACHE_NAME = 'music-premium-v88-stream-only';
-const APP_SHELL = ['./','./index.html','./style.css?v=99','./premium-refresh.css?v=3','./app.js?v=103','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
+const CACHE_NAME = 'music-premium-v89-stream-only';
+const APP_SHELL = ['./','./index.html','./style.css?v=99','./premium-refresh.css?v=3','./app.js?v=104','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });

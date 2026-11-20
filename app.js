@@ -23,6 +23,7 @@ let lifetimeAccess = false;
 let streamingConfigured = false;
 let paymentsConfigured = false;
 let pendingAccessMessage = "";
+let pendingPaymentReturn = false;
 
 let visibleLimit = PAGE_SIZE;
 let requestId = 0;
@@ -829,6 +830,15 @@ function openAccount(mode){
   if(accountMode === "profile") refreshAccount();
 }
 function closeAccount(){if(accountGateActive)return;const modal=$("accountModal");if(modal)modal.hidden=true;}
+function returnToMusicFoldersAfterPayment(){
+  if(!pendingPaymentReturn)return;
+  pendingPaymentReturn=false;
+  accountGateActive=false;
+  $("accountClose").hidden=false;
+  closeAccount();
+  closeFolder();
+  showToast("Pagamento confirmado. Sua biblioteca MUSIC VIP está liberada.");
+}
 async function authRequest(path,method,body){
   const headers={"Content-Type":"application/json"};
   const token=getAuthToken(); if(token)headers.Authorization="Bearer "+token;
@@ -852,9 +862,13 @@ async function refreshAccount(){
     $("accountBtn").textContent=lifetimeAccess?"Minha conta · VIP":"Minha conta";
     if(wasLifetime!==lifetimeAccess){
       renderFolders();renderSongListIfOpen();
-      if(lifetimeAccess) await loadCatalog();
+      if(lifetimeAccess){
+        returnToMusicFoldersAfterPayment();
+        await loadCatalog();
+      }
       else {audio.pause();audio.removeAttribute("src");audio.load();await clearOfflineMusic();saveCatalogSnapshot();}
     }
+    if(lifetimeAccess) returnToMusicFoldersAfterPayment();
     try{
       const payment=await authRequest("/payments/status","GET");
       if(payment.lifetimeAccess){
@@ -862,7 +876,9 @@ async function refreshAccount(){
         lifetimeAccess=true;$("accountPlanDisplay").textContent="Plano: acesso vitalício ativo";
         $("premiumOffer").hidden=true;$("premiumActive").hidden=false;
         $("accountBtn").textContent="Minha conta · VIP";
-        if(!wasLifetime){renderFolders();renderSongListIfOpen();await loadCatalog();}
+        if(!wasLifetime){renderFolders();renderSongListIfOpen();}
+        returnToMusicFoldersAfterPayment();
+        if(!wasLifetime) await loadCatalog();
       }else if(payment.paymentStatus==="pending"){
         $("paymentFeedback").textContent="Pagamento pendente de confirmação. O acesso será liberado somente após validação pelo servidor.";
       }
@@ -933,6 +949,7 @@ async function startCheckout(){
 async function handlePaymentReturn(){
   const returnState=new URLSearchParams(window.location.search).get("mp_return");
   if(!returnState)return;
+  pendingPaymentReturn = returnState==="success" || returnState==="pending";
   window.history.replaceState(null,"",window.location.pathname+window.location.hash);
   if(!getAuthToken()){
     openAccount("login");
@@ -961,7 +978,9 @@ async function handlePaymentReturn(){
         $("accountPlanDisplay").textContent="Plano: acesso vitalício ativo";
         $("premiumOffer").hidden=true;$("premiumActive").hidden=false;
         $("accountBtn").textContent="Minha conta · VIP";
-        await loadCatalog();
+        renderFolders();renderSongListIfOpen();
+        returnToMusicFoldersAfterPayment();
+        try{await loadCatalog();}catch(_){}
         feedback.textContent="Pagamento aprovado e acesso vitalício confirmado.";
         return;
       }
