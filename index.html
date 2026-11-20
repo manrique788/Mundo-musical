@@ -161,9 +161,9 @@
   </section>
   <style>
     .account-open-btn{margin-left:12px;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:9px 16px;background:#17131f;color:#fff;font:600 13px inherit;cursor:pointer}
-    .account-modal[hidden]{display:none!important}.account-modal{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px}
+    .account-modal[hidden]{display:none!important}.account-modal{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:18px;overflow-y:auto;overscroll-behavior-y:contain}
     .account-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.76);backdrop-filter:blur(8px)}
-    .account-panel{position:relative;width:min(100%,420px);padding:30px;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:#100d18;color:#fff;box-shadow:0 24px 90px #0009}
+    .account-panel{position:relative;box-sizing:border-box;width:min(100%,420px);max-height:calc(100vh - 36px);max-height:calc(100dvh - 36px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:30px;border:1px solid rgba(255,255,255,.12);border-radius:24px;background:#100d18;color:#fff;box-shadow:0 24px 90px #0009}
     .account-close{position:absolute;right:16px;top:12px;border:0;background:none;color:#aaa;font-size:28px;cursor:pointer}
     .account-brand{font-weight:800;letter-spacing:3px;font-size:14px}.account-brand span{color:#aaa}
     .account-panel h2{margin:22px 0 6px;font-size:25px}.account-panel>p{color:#aaa;font-size:14px}
