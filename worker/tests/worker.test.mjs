@@ -657,3 +657,277 @@ test("reconciliação mantém pedido pendente em erro do provedor e limita tenta
   assert.equal(state.order.status, "pending");
   assert.equal(state.entitled, false);
 });
+
+
+test("reconcilia por Merchant Order quando o pagamento não traz preference_id, validando a preferência e o item exatos", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  const preferenceId = "verified-merchant-order-preference";
+  let merchantOrderCalls = 0;
+  let preferenceCalls = 0;
+  let summary;
+  const originalInfo = console.info;
+  console.info = (_eventName, details) => { summary = details; };
+  try {
+    const response = await withMockedFetch(async (input, init) => {
+      const url = new URL(String(input));
+      assert.equal(init.headers.Authorization, "Bearer unit-test-access-token");
+      if (url.pathname === "/v1/payments/search") {
+        return new Response(JSON.stringify({ results: [{ id: "payment-1" }] }), { status: 200 });
+      }
+      if (url.pathname === "/v1/payments/payment-1") {
+        return new Response(JSON.stringify({
+          id: "payment-1",
+          status: "approved",
+          live_mode: true,
+          external_reference: "order-1",
+          preference_id: null,
+          transaction_amount: 15,
+          currency_id: "BRL",
+          date_approved: "2026-11-20T22:00:00.000Z"
+        }), { status: 200 });
+      }
+      if (url.pathname === "/merchant_orders/search") {
+        merchantOrderCalls++;
+        assert.equal(url.searchParams.get("external_reference"), "order-1");
+        return new Response(JSON.stringify({
+          elements: [{
+            id: "merchant-order-1",
+            status: "closed",
+            order_status: "paid",
+            external_reference: "order-1",
+            preference_id: preferenceId,
+            total_amount: 15,
+            paid_amount: 15,
+            payments: [{ id: "payment-1", status: "approved", transaction_amount: 15, currency_id: "BRL" }],
+            items: [{ id: "music-vip-lifetime", quantity: 1, unit_price: 15, currency_id: "BRL" }]
+          }],
+          total: 1
+        }), { status: 200 });
+      }
+      if (url.pathname === `/checkout/preferences/${preferenceId}`) {
+        preferenceCalls++;
+        return new Response(JSON.stringify({
+          id: preferenceId,
+          external_reference: "order-1",
+          items: [{ id: "music-vip-lifetime", quantity: 1, unit_price: "15.00", currency_id: "BRL" }]
+        }), { status: 200 });
+      }
+      throw new Error("Unexpected Mercado Pago URL");
+    }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+      headers: { Authorization: "Bearer test-session-token" }
+    }), env));
+
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).lifetimeAccess, true);
+  } finally {
+    console.info = originalInfo;
+  }
+
+  assert.equal(merchantOrderCalls, 1);
+  assert.equal(preferenceCalls, 1);
+  assert.equal(state.order.preference_id, preferenceId);
+  assert.equal(state.order.status, "approved");
+  assert.equal(state.paymentRows, 1);
+  assert.equal(summary.merchantOrderVerification.attempts, 1);
+  assert.equal(summary.merchantOrderVerification.verified, 1);
+  assert.equal(summary.preferenceVerification.verified, 1);
+  assert.equal(summary.entitlementsGranted, 1);
+  assert.doesNotMatch(JSON.stringify(summary), /merchant-order-1|payment-1|order-1|verified-merchant-order-preference|15\.00/);
+});
+
+test("mantém pendente se Merchant Order não confirmar o item MUSIC VIP exato", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  const originalPreferenceId = state.order.preference_id;
+  let preferenceCalls = 0;
+  let summary;
+  const originalInfo = console.info;
+  console.info = (_eventName, details) => { summary = details; };
+  try {
+    const response = await withMockedFetch(async input => {
+      const url = new URL(String(input));
+      if (url.pathname === "/v1/payments/search") {
+        return new Response(JSON.stringify({ results: [{ id: "payment-1" }] }), { status: 200 });
+      }
+      if (url.pathname === "/v1/payments/payment-1") {
+        return new Response(JSON.stringify({
+          id: "payment-1",
+          status: "approved",
+          live_mode: true,
+          external_reference: "order-1",
+          preference_id: null,
+          transaction_amount: 15,
+          currency_id: "BRL"
+        }), { status: 200 });
+      }
+      if (url.pathname === "/merchant_orders/search") {
+        return new Response(JSON.stringify({
+          elements: [{
+            id: "merchant-order-1",
+            status: "closed",
+            order_status: "paid",
+            external_reference: "order-1",
+            preference_id: "other-preference",
+            total_amount: 15,
+            paid_amount: 15,
+            payments: [{ id: "payment-1", status: "approved", transaction_amount: 15, currency_id: "BRL" }],
+            items: [{ id: "other-product", quantity: 1, unit_price: 15, currency_id: "BRL" }]
+          }],
+          total: 1
+        }), { status: 200 });
+      }
+      if (url.pathname === "/checkout/preferences/other-preference") {
+        preferenceCalls++;
+        return new Response(JSON.stringify({
+          id: "other-preference",
+          external_reference: "order-1",
+          items: [{ id: "other-product", quantity: 1, unit_price: 15, currency_id: "BRL" }]
+        }), { status: 200 });
+      }
+      throw new Error("Unexpected Mercado Pago URL");
+    }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+      headers: { Authorization: "Bearer test-session-token" }
+    }), env));
+
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.lifetimeAccess, false);
+    assert.equal(result.paymentStatus, "pending");
+  } finally {
+    console.info = originalInfo;
+  }
+
+  assert.equal(preferenceCalls, 0);
+  assert.equal(state.order.status, "pending");
+  assert.equal(state.order.preference_id, originalPreferenceId);
+  assert.equal(state.paymentRows, 0);
+  assert.equal(summary.merchantOrderVerification.attempts, 1);
+  assert.equal(summary.merchantOrderVerification.itemMismatches, 1);
+  assert.equal(summary.merchantOrderVerification.verified, 0);
+  assert.equal(summary.entitlementsGranted, 0);
+});
+
+function webhookTestEnvironment() {
+  const env = testEnvironment();
+  const order = {
+    id: "order-1",
+    user_id: "user-1",
+    preference_id: "preference-1",
+    amount_cents: 1500,
+    currency_id: "BRL",
+    status: "pending"
+  };
+  let batchCalls = 0;
+  env.MERCADOPAGO_ACCESS_TOKEN = "unit-test-access-token";
+  env.MERCADOPAGO_WEBHOOK_SECRET = "unit-test-webhook-secret";
+  env.DB = {
+    prepare(sql) {
+      return {
+        bind(...values) {
+          return {
+            async first() {
+              if (sql.includes("FROM checkout_orders") && sql.includes("WHERE id = ?")) {
+                return values[0] === order.id ? order : null;
+              }
+              if (sql.includes("FROM checkout_orders") && sql.includes("WHERE preference_id = ?")) {
+                return values[0] === order.preference_id ? order : null;
+              }
+              if (sql.includes("FROM payments WHERE provider_payment_id")) return null;
+              return null;
+            }
+          };
+        }
+      };
+    },
+    async batch(statements) {
+      batchCalls++;
+      return statements.map(() => ({ meta: { changes: 1 } }));
+    }
+  };
+  return { env, order, batchCalls: () => batchCalls };
+}
+
+async function signedWebhookRequest(secret, paymentId) {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const requestId = "webhook-request-1";
+  const manifest = `id:${paymentId};request-id:${requestId};ts:${timestamp};`;
+  const signature = await hmacHex(secret, manifest);
+  return new Request(`https://worker.example/payments/webhook?type=payment&data.id=${encodeURIComponent(paymentId)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-signature": `ts=${timestamp},v1=${signature}`,
+      "x-request-id": requestId
+    },
+    body: JSON.stringify({ type: "payment", data: { id: paymentId } })
+  });
+}
+
+test("webhook não persiste nem libera pagamento aprovado em modo de teste", async () => {
+  const { env, batchCalls } = webhookTestEnvironment();
+  const request = await signedWebhookRequest(env.MERCADOPAGO_WEBHOOK_SECRET, "payment-1");
+  const response = await withMockedFetch(async input => {
+    assert.equal(new URL(String(input)).pathname, "/v1/payments/payment-1");
+    return new Response(JSON.stringify({
+      id: "payment-1",
+      status: "approved",
+      live_mode: false,
+      external_reference: "order-1",
+      preference_id: "preference-1",
+      transaction_amount: 15,
+      currency_id: "BRL"
+    }), { status: 200 });
+  }, () => musicWorker.fetch(request, env));
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ignored, true);
+  assert.equal(batchCalls(), 0);
+});
+
+test("webhook exige referência exata do pedido mesmo quando a preferência coincide", async () => {
+  const { env, batchCalls } = webhookTestEnvironment();
+  const request = await signedWebhookRequest(env.MERCADOPAGO_WEBHOOK_SECRET, "payment-1");
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let response;
+  try {
+    response = await withMockedFetch(async input => {
+      assert.equal(new URL(String(input)).pathname, "/v1/payments/payment-1");
+      return new Response(JSON.stringify({
+        id: "payment-1",
+        status: "approved",
+        live_mode: true,
+        external_reference: "",
+        preference_id: "preference-1",
+        transaction_amount: 15,
+        currency_id: "BRL"
+      }), { status: 200 });
+    }, () => musicWorker.fetch(request, env));
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ignored, true);
+  assert.equal(batchCalls(), 0);
+});
+
+test("webhook continua persistindo pagamento de produção com referência e preferência exatas", async () => {
+  const { env, batchCalls } = webhookTestEnvironment();
+  const request = await signedWebhookRequest(env.MERCADOPAGO_WEBHOOK_SECRET, "payment-1");
+  const response = await withMockedFetch(async input => {
+    assert.equal(new URL(String(input)).pathname, "/v1/payments/payment-1");
+    return new Response(JSON.stringify({
+      id: "payment-1",
+      status: "approved",
+      live_mode: true,
+      external_reference: "order-1",
+      preference_id: "preference-1",
+      transaction_amount: 15,
+      currency_id: "BRL"
+    }), { status: 200 });
+  }, () => musicWorker.fetch(request, env));
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ok, true);
+  assert.equal(batchCalls(), 1);
+});
