@@ -441,6 +441,47 @@ test("pagamentos/status aceita resultados de busca do Mercado Pago envolvidos em
   assert.equal(state.paymentRows, 1);
 });
 
+test("reconciliação registra somente métricas agregadas e não expõe identificadores", async () => {
+  const { env } = paymentReconciliationEnvironment();
+  const originalInfo = console.info;
+  let summary;
+  console.info = (eventName, details) => {
+    assert.equal(eventName, "MUSIC_PAYMENT_RECONCILIATION");
+    summary = details;
+  };
+  try {
+    await withMockedFetch(async input => {
+      const url = new URL(String(input));
+      if (url.pathname === "/v1/payments/search") {
+        return new Response(JSON.stringify({ results: [{ id: "private-payment-id" }] }), { status: 200 });
+      }
+      if (url.pathname === "/v1/payments/private-payment-id") {
+        return new Response(JSON.stringify({
+          id: "private-payment-id",
+          status: "approved",
+          live_mode: true,
+          external_reference: "different-private-order",
+          preference_id: "preference-1",
+          transaction_amount: 15,
+          currency_id: "BRL"
+        }), { status: 200 });
+      }
+      throw new Error("Unexpected Mercado Pago URL");
+    }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+      headers: { Authorization: "Bearer test-session-token" }
+    }), env));
+  } finally {
+    console.info = originalInfo;
+  }
+
+  assert.equal(summary.resultCount, 1);
+  assert.equal(summary.detailsFetched, 1);
+  assert.equal(summary.mismatches.externalReference, 1);
+  assert.equal(summary.validatedPayments, 0);
+  assert.equal(summary.entitlementsGranted, 0);
+  assert.doesNotMatch(JSON.stringify(summary), /private-payment-id|different-private-order|preference-1|15/);
+});
+
 test("pagamentos/status não consulta o Mercado Pago sem sessão autenticada", async () => {
   const { env } = paymentReconciliationEnvironment();
   let fetchCalls = 0;

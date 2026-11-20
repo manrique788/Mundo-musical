@@ -722,23 +722,66 @@ async function reconcilePendingPayments(env, userId) {
         Array.isArray(page && page.results) ? page.results : []
       );
       const candidates = searchResults.slice(0, PAYMENT_RECONCILE_PAYMENT_LIMIT);
+      const summary = {
+        searchShape: Array.isArray(searchData) ? "array" : searchData === null ? "null" : typeof searchData,
+        pageCount: resultPages.length,
+        resultCount: searchResults.length,
+        candidateCount: candidates.length,
+        invalidCandidateIds: 0,
+        detailNetworkErrors: 0,
+        detailHttpErrors: 0,
+        invalidDetails: 0,
+        detailsFetched: 0,
+        mismatches: { status: 0, liveMode: 0, externalReference: 0, preference: 0, amount: 0, currency: 0 },
+        validatedPayments: 0,
+        entitlementsGranted: 0
+      };
 
       for (const candidate of candidates) {
         const candidateId = String(candidate && candidate.id || "");
-        if (!candidateId || candidateId.length > 64) continue;
-        const detailResponse = await fetch(
-          `https://api.mercadopago.com/v1/payments/${encodeURIComponent(candidateId)}`,
-          { headers }
-        );
-        if (!detailResponse.ok) continue;
+        if (!candidateId || candidateId.length > 64) {
+          summary.invalidCandidateIds++;
+          continue;
+        }
+        let detailResponse;
+        try {
+          detailResponse = await fetch(
+            `https://api.mercadopago.com/v1/payments/${encodeURIComponent(candidateId)}`,
+            { headers }
+          );
+        } catch {
+          summary.detailNetworkErrors++;
+          continue;
+        }
+        if (!detailResponse.ok) {
+          summary.detailHttpErrors++;
+          continue;
+        }
         const payment = await detailResponse.json().catch(() => null);
-        if (!payment || String(payment.id) !== candidateId || payment.status !== "approved" || payment.live_mode !== true) continue;
-        if (String(payment.external_reference || "") !== String(order.id)) continue;
-        if (String(payment.preference_id || "") !== String(order.preference_id)) continue;
-        if (Math.round(Number(payment.transaction_amount) * 100) !== Number(order.amount_cents)) continue;
-        if (String(payment.currency_id || "") !== String(order.currency_id || "BRL")) continue;
-        if (await persistApprovedReconciledPayment(env, order, payment)) break;
+        if (!payment || String(payment.id) !== candidateId) {
+          summary.invalidDetails++;
+          continue;
+        }
+        summary.detailsFetched++;
+        const checks = {
+          status: payment.status === "approved",
+          liveMode: payment.live_mode === true,
+          externalReference: String(payment.external_reference || "") === String(order.id),
+          preference: String(payment.preference_id || "") === String(order.preference_id),
+          amount: Math.round(Number(payment.transaction_amount) * 100) === Number(order.amount_cents),
+          currency: String(payment.currency_id || "") === String(order.currency_id || "BRL")
+        };
+        for (const [key, valid] of Object.entries(checks)) {
+          if (!valid) summary.mismatches[key]++;
+        }
+        if (!Object.values(checks).every(Boolean)) continue;
+        summary.validatedPayments++;
+        if (await persistApprovedReconciledPayment(env, order, payment)) {
+          summary.entitlementsGranted++;
+          break;
+        }
       }
+      console.info("MUSIC_PAYMENT_RECONCILIATION", summary);
     } catch {
       console.error("Não foi possível reconciliar um pedido pendente com o Mercado Pago.");
     }
