@@ -4,6 +4,9 @@ const SESSION_DAYS = 7;
 const PASSWORD_ITERATIONS = 100000;
 const PREMIUM_AMOUNT_CENTS = 1500;
 const MEDIA_TICKET_TTL_SECONDS = 4 * 60 * 60;
+const PAYMENT_RECONCILE_INTERVAL_MS = 15 * 1000;
+const PAYMENT_RECONCILE_ORDER_LIMIT = 5;
+const PAYMENT_RECONCILE_PAYMENT_LIMIT = 3;
 const SITE_URL = "https://manrique788.github.io/Mundo-musical/";
 const AUDIO_EXTENSION = /\.(mp3|m4a|wav|ogg|aac|flac)$/i;
 
@@ -545,6 +548,7 @@ async function checkout(request, env) {
 async function paymentStatus(request, env) {
   const user = await authenticate(request, env);
   if (!user) return json({ error: "Sessão inválida ou expirada" }, 401);
+  await reconcilePendingPayments(env, user.id);
   const latestOrder = await env.DB.prepare(
     `SELECT status, created_at FROM checkout_orders
      WHERE user_id = ? AND provider = 'mercadopago'
@@ -608,6 +612,135 @@ async function persistPayment(env, order, payment) {
 
   await env.DB.batch(statements);
   return true;
+}
+
+async function persistApprovedReconciledPayment(env, order, payment) {
+  const providerPaymentId = String(payment.id);
+  const paymentRowId = `mercadopago_${providerPaymentId}`;
+  const amountCents = Math.round(Number(payment.transaction_amount) * 100);
+  const paidAt = payment.date_approved || new Date().toISOString();
+  const now = new Date().toISOString();
+  const existing = await env.DB.prepare(
+    `SELECT id, user_id, provider FROM payments WHERE provider_payment_id = ? LIMIT 1`
+  ).bind(providerPaymentId).first();
+  if (existing && (existing.provider !== "mercadopago" || existing.user_id !== order.user_id)) return false;
+
+  const results = await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE checkout_orders
+       SET status = 'approved', provider_payment_id = ?, updated_at = ?
+       WHERE id = ? AND user_id = ? AND provider = 'mercadopago'
+         AND (status = 'pending' OR (status = 'approved' AND provider_payment_id = ?))
+         AND (provider_payment_id IS NULL OR provider_payment_id = ?)`
+    ).bind(providerPaymentId, now, order.id, order.user_id, providerPaymentId, providerPaymentId),
+    env.DB.prepare(
+      `INSERT INTO payments
+        (id, user_id, subscription_id, provider, provider_payment_id, amount_cents, status, paid_at)
+       SELECT ?, ?, NULL, 'mercadopago', ?, ?, 'approved', ?
+       WHERE EXISTS (
+         SELECT 1 FROM checkout_orders
+         WHERE id = ? AND user_id = ? AND provider = 'mercadopago'
+           AND status = 'approved' AND provider_payment_id = ?
+       )
+       ON CONFLICT(provider_payment_id) DO UPDATE SET
+         amount_cents = excluded.amount_cents,
+         status = excluded.status,
+         paid_at = excluded.paid_at
+       WHERE payments.provider = 'mercadopago' AND payments.user_id = excluded.user_id`
+    ).bind(paymentRowId, order.user_id, providerPaymentId, amountCents, paidAt, order.id, order.user_id, providerPaymentId),
+    env.DB.prepare(
+      `INSERT INTO user_entitlements
+        (id, user_id, plan, status, source, payment_id, started_at, updated_at)
+       SELECT ?, ?, 'lifetime', 'active', 'mercadopago', ?, ?, ?
+       WHERE EXISTS (
+         SELECT 1 FROM checkout_orders AS orders
+         JOIN payments ON payments.provider_payment_id = orders.provider_payment_id
+         WHERE orders.id = ? AND orders.user_id = ? AND orders.provider = 'mercadopago'
+           AND orders.status = 'approved' AND orders.provider_payment_id = ?
+           AND payments.provider = 'mercadopago' AND payments.status = 'approved'
+           AND payments.user_id = orders.user_id
+       )
+       ON CONFLICT(user_id) DO UPDATE SET
+         plan = 'lifetime', status = 'active', source = 'mercadopago',
+         payment_id = excluded.payment_id, updated_at = excluded.updated_at`
+    ).bind(`lifetime_${order.user_id}`, order.user_id, paymentRowId, paidAt, now, order.id, order.user_id, providerPaymentId)
+  ]);
+  return Number(results && results[0] && results[0].meta && results[0].meta.changes || 0) > 0;
+}
+
+async function reconcilePendingPayments(env, userId) {
+  if (!env.MERCADOPAGO_ACCESS_TOKEN || !userId) return;
+  let pendingOrders;
+  try {
+    pendingOrders = await env.DB.prepare(
+      `SELECT id, user_id, preference_id, amount_cents, currency_id, status, last_reconciled_at
+       FROM checkout_orders
+       WHERE user_id = ? AND provider = 'mercadopago' AND status = 'pending'
+       ORDER BY created_at DESC LIMIT ?`
+    ).bind(userId, PAYMENT_RECONCILE_ORDER_LIMIT).all();
+  } catch {
+    console.error("Não foi possível carregar pedidos pendentes para reconciliação.");
+    return;
+  }
+
+  const orders = Array.isArray(pendingOrders && pendingOrders.results) ? pendingOrders.results : [];
+  for (const order of orders) {
+    try {
+      const now = Date.now();
+      const checkedAt = new Date(now).toISOString();
+      const cutoff = new Date(now - PAYMENT_RECONCILE_INTERVAL_MS).toISOString();
+      const claim = await env.DB.prepare(
+        `UPDATE checkout_orders SET last_reconciled_at = ?
+         WHERE id = ? AND user_id = ? AND provider = 'mercadopago' AND status = 'pending'
+           AND (last_reconciled_at IS NULL OR last_reconciled_at <= ?)`
+      ).bind(checkedAt, order.id, userId, cutoff).run();
+      if (Number(claim && claim.meta && claim.meta.changes || 0) !== 1) continue;
+
+      const searchUrl = new URL("https://api.mercadopago.com/v1/payments/search");
+      searchUrl.search = new URLSearchParams({
+        external_reference: String(order.id),
+        status: "approved",
+        sort: "date_created",
+        criteria: "desc",
+        range: "date_created",
+        begin_date: "NOW-30DAYS",
+        end_date: "NOW",
+        limit: String(PAYMENT_RECONCILE_PAYMENT_LIMIT)
+      }).toString();
+      const headers = {
+        "Authorization": `Bearer ${env.MERCADOPAGO_ACCESS_TOKEN}`,
+        "Accept": "application/json"
+      };
+      const searchResponse = await fetch(searchUrl, { headers });
+      if (!searchResponse.ok) {
+        console.error("Busca de reconciliação no Mercado Pago falhou:", searchResponse.status);
+        continue;
+      }
+      const searchData = await searchResponse.json().catch(() => null);
+      const candidates = Array.isArray(searchData && searchData.results)
+        ? searchData.results.slice(0, PAYMENT_RECONCILE_PAYMENT_LIMIT)
+        : [];
+
+      for (const candidate of candidates) {
+        const candidateId = String(candidate && candidate.id || "");
+        if (!candidateId || candidateId.length > 64) continue;
+        const detailResponse = await fetch(
+          `https://api.mercadopago.com/v1/payments/${encodeURIComponent(candidateId)}`,
+          { headers }
+        );
+        if (!detailResponse.ok) continue;
+        const payment = await detailResponse.json().catch(() => null);
+        if (!payment || String(payment.id) !== candidateId || payment.status !== "approved" || payment.live_mode !== true) continue;
+        if (String(payment.external_reference || "") !== String(order.id)) continue;
+        if (String(payment.preference_id || "") !== String(order.preference_id)) continue;
+        if (Math.round(Number(payment.transaction_amount) * 100) !== Number(order.amount_cents)) continue;
+        if (String(payment.currency_id || "") !== String(order.currency_id || "BRL")) continue;
+        if (await persistApprovedReconciledPayment(env, order, payment)) break;
+      }
+    } catch {
+      console.error("Não foi possível reconciliar um pedido pendente com o Mercado Pago.");
+    }
+  }
 }
 
 async function paymentWebhook(request, env, url) {

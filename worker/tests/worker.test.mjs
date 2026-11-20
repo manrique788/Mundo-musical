@@ -107,6 +107,91 @@ function authenticatedEnvironment({ entitled = false, sessionActive = true } = {
   return { env, user, state };
 }
 
+function paymentReconciliationEnvironment() {
+  const env = testEnvironment();
+  const user = { id: "user-1", email: "test@example.com", session_id: "session-1", expires_at: "2099-01-01T00:00:00.000Z" };
+  const state = {
+    entitled: false,
+    lastReconciledAt: null,
+    paymentRows: 0,
+    order: {
+      id: "order-1",
+      user_id: user.id,
+      preference_id: "preference-1",
+      amount_cents: 1500,
+      currency_id: "BRL",
+      status: "pending",
+      created_at: "2026-11-20 20:00:00"
+    }
+  };
+  env.MERCADOPAGO_ACCESS_TOKEN = "unit-test-access-token";
+  env.DB = {
+    prepare(sql) {
+      return {
+        sql,
+        bind(...values) {
+          return {
+            sql,
+            values,
+            async first() {
+              if (sql.includes("JOIN users")) return user;
+              if (sql.includes("FROM user_entitlements")) return state.entitled ? { id: "entitlement-1" } : null;
+              if (sql.includes("SELECT status, created_at FROM checkout_orders")) {
+                return { status: state.order.status, created_at: state.order.created_at };
+              }
+              if (sql.includes("FROM payments WHERE provider_payment_id")) return null;
+              return null;
+            },
+            async all() {
+              if (sql.includes("FROM checkout_orders") && sql.includes("last_reconciled_at")) {
+                return { results: state.order.status === "pending" ? [{ ...state.order, last_reconciled_at: state.lastReconciledAt }] : [] };
+              }
+              return { results: [] };
+            },
+            async run() {
+              if (sql.includes("UPDATE checkout_orders SET last_reconciled_at")) {
+                const checkedAt = values[0];
+                const cutoff = values[3];
+                const due = !state.lastReconciledAt || state.lastReconciledAt <= cutoff;
+                if (state.order.status === "pending" && due) {
+                  state.lastReconciledAt = checkedAt;
+                  return { meta: { changes: 1 } };
+                }
+                return { meta: { changes: 0 } };
+              }
+              return { meta: { changes: 1 } };
+            }
+          };
+        }
+      };
+    },
+    async batch(statements) {
+      const update = statements[0];
+      if (!update.sql.includes("UPDATE checkout_orders")) return statements.map(() => ({ meta: { changes: 0 } }));
+      const [paymentId, updatedAt, orderId, userId, approvedPaymentId, allowedPaymentId] = update.values;
+      const allowedStatus = state.order.status === "pending" || (state.order.status === "approved" && state.order.provider_payment_id === approvedPaymentId);
+      const allowedPayment = !state.order.provider_payment_id || state.order.provider_payment_id === allowedPaymentId;
+      if (orderId !== state.order.id || userId !== state.order.user_id || !allowedStatus || !allowedPayment) {
+        return statements.map(() => ({ meta: { changes: 0 } }));
+      }
+      state.order.status = "approved";
+      state.order.provider_payment_id = paymentId;
+      state.order.updated_at = updatedAt;
+      state.entitled = true;
+      state.paymentRows++;
+      return statements.map(() => ({ meta: { changes: 1 } }));
+    }
+  };
+  return { env, user, state };
+}
+
+async function withMockedFetch(mockFetch, callback) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = mockFetch;
+  try { return await callback(); }
+  finally { globalThis.fetch = originalFetch; }
+}
+
 function streamUrlFor(key, ticket) {
   const path = key.split("/").map(encodeURIComponent).join("/");
   const url = new URL("https://worker.example/stream/" + path);
@@ -282,4 +367,123 @@ test("streamR2 recusa range fora do tamanho com Content-Range 416", async () => 
   }), env, "a.mp3");
   assert.equal(response.status, 416);
   assert.equal(response.headers.get("Content-Range"), "bytes */10");
+});
+
+test("pagamentos/status reconcilia pagamento aprovado e correspondente sem confiar em IDs do cliente", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  let searchCalls = 0;
+  let detailCalls = 0;
+  const response = await withMockedFetch(async (input, init) => {
+    const url = new URL(String(input));
+      assert.equal(init.headers.Authorization, "Bearer unit-test-access-token");
+      if (url.pathname === "/v1/payments/search") {
+        searchCalls++;
+        assert.equal(url.searchParams.get("external_reference"), "order-1");
+        assert.equal(url.searchParams.get("status"), "approved");
+        assert.equal(url.searchParams.get("limit"), "3");
+        return new Response(JSON.stringify({ results: [{ id: "payment-1" }] }), { status: 200 });
+      }
+    if (url.pathname === "/v1/payments/payment-1") {
+      detailCalls++;
+      return new Response(JSON.stringify({
+        id: "payment-1",
+        status: "approved",
+        live_mode: true,
+        external_reference: "order-1",
+        preference_id: "preference-1",
+        transaction_amount: 15,
+        currency_id: "BRL",
+        date_approved: "2026-11-20T22:00:00.000Z"
+      }), { status: 200 });
+    }
+    throw new Error("Unexpected Mercado Pago URL");
+  }, () => musicWorker.fetch(new Request("https://worker.example/payments/status?external_reference=attacker-value", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), env));
+
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.lifetimeAccess, true);
+  assert.equal(result.paymentStatus, "approved");
+  assert.equal(state.order.provider_payment_id, "payment-1");
+  assert.equal(state.paymentRows, 1);
+  assert.equal(searchCalls, 1);
+  assert.equal(detailCalls, 1);
+});
+
+test("pagamentos/status não consulta o Mercado Pago sem sessão autenticada", async () => {
+  const { env } = paymentReconciliationEnvironment();
+  let fetchCalls = 0;
+  const response = await withMockedFetch(async () => {
+    fetchCalls++;
+    throw new Error("fetch não deve ser chamado sem autenticação");
+  }, () => musicWorker.fetch(new Request("https://worker.example/payments/status"), env));
+
+  assert.equal(response.status, 401);
+  assert.equal(fetchCalls, 0);
+});
+
+test("reconciliação não libera acesso para pagamento não aprovado ou dados divergentes", async () => {
+  const invalidPayments = [
+    { status: "pending" },
+    { live_mode: false },
+    { id: "different-payment" },
+    { external_reference: "different-order" },
+    { preference_id: "different-preference" },
+    { transaction_amount: 14.99 },
+    { currency_id: "USD" }
+  ];
+
+  for (const overrides of invalidPayments) {
+    const { env, state } = paymentReconciliationEnvironment();
+    const response = await withMockedFetch(async input => {
+      const url = new URL(String(input));
+      if (url.pathname === "/v1/payments/search") {
+        return new Response(JSON.stringify({ results: [{ id: "payment-1" }] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({
+        id: "payment-1",
+        status: "approved",
+        live_mode: true,
+        external_reference: "order-1",
+        preference_id: "preference-1",
+        transaction_amount: 15,
+        currency_id: "BRL",
+        date_approved: "2026-11-20T22:00:00.000Z",
+        ...overrides
+      }), { status: 200 });
+    }, () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+      headers: { Authorization: "Bearer test-session-token" }
+    }), env));
+
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.lifetimeAccess, false);
+    assert.equal(result.paymentStatus, "pending");
+    assert.equal(state.order.status, "pending");
+    assert.equal(state.paymentRows, 0);
+  }
+});
+
+test("reconciliação mantém pedido pendente em erro do provedor e limita tentativas repetidas", async () => {
+  const { env, state } = paymentReconciliationEnvironment();
+  let searchCalls = 0;
+  const mockFetch = async () => {
+    searchCalls++;
+    return new Response("temporarily unavailable", { status: 503 });
+  };
+  const request = () => musicWorker.fetch(new Request("https://worker.example/payments/status", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), env);
+
+  await withMockedFetch(mockFetch, async () => {
+    const first = await request();
+    const second = await request();
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+  });
+
+  assert.equal(searchCalls, 1);
+  assert.equal(state.order.status, "pending");
+  assert.equal(state.entitled, false);
 });
