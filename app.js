@@ -7,6 +7,9 @@ const PAGE_SIZE = 100;
 const OFFLINE_DB = "music-offline-v2";
 const DELETED_SONGS_KEY = "music-deleted-songs-v1";
 const DELETED_FOLDERS_KEY = "music-deleted-folders-v1";
+const CATALOG_CACHE_KEY = "music-catalog-v1";
+const MUSIC_CACHE_PURGE_KEY = "music-cache-purge-v1";
+const MUSIC_CACHE_PURGE_VERSION = "2026-11-20-empty-catalog";
 let offlineDbPromise = null;
 let offlineSyncRunning = false;
 let activeObjectUrl = "";
@@ -126,6 +129,33 @@ function offlineDelete(url) {
     request.onsuccess = request.onerror = function() { resolve(); };
   }); }).catch(function() {});
 }
+async function clearOfflineMusic() {
+  if (!window.indexedDB) return;
+  const db = await openOfflineDb();
+  await new Promise(function(resolve,reject) {
+    const transaction = db.transaction("audio","readwrite");
+    transaction.objectStore("audio").clear();
+    transaction.oncomplete = resolve;
+    transaction.onerror = function() { reject(transaction.error); };
+    transaction.onabort = function() { reject(transaction.error); };
+  });
+}
+async function purgeLegacyMusicCacheOnce() {
+  try {
+    if (localStorage.getItem(MUSIC_CACHE_PURGE_KEY) === MUSIC_CACHE_PURGE_VERSION) return;
+  } catch (_) {}
+  try {
+    localStorage.removeItem(CATALOG_CACHE_KEY);
+    localStorage.removeItem(DELETED_SONGS_KEY);
+    localStorage.removeItem(DELETED_FOLDERS_KEY);
+  } catch (_) {}
+  try {
+    await clearOfflineMusic();
+    localStorage.setItem(MUSIC_CACHE_PURGE_KEY,MUSIC_CACHE_PURGE_VERSION);
+  } catch (error) {
+    console.warn("Não foi possível concluir a limpeza do catálogo offline:",error);
+  }
+}
 function offlineStatus(text) { const el = $("offlineStatus"); if (el) el.textContent = text; const label = $("offlineProgressLabel"); if (label) label.textContent = text; }
 function offlineProgress(done,total) {
   const bar = $("offlineProgress");
@@ -218,6 +248,7 @@ async function startOfflineSync() {
   }
 }
 async function loadCatalog() {
+  await purgeLegacyMusicCacheOnce();
   $("genreCards").innerHTML = '<div class="loading-card">Carregando sua biblioteca...</div>';
   try {
     const all = [];
@@ -236,6 +267,43 @@ async function loadCatalog() {
       pageCount++;
       if (pageCount > 100) throw new Error("Paginação interrompida por segurança");
     } while (cursor);
+
+    // Uma resposta vazia do servidor é definitiva: não ressuscite cópias antigas do aparelho.
+    if (all.length === 0) {
+      songs = [];
+      folders = [];
+      queue = [];
+      activeFolder = "";
+      currentIndex = -1;
+      requestId++;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      if (activeObjectUrl) { URL.revokeObjectURL(activeObjectUrl); activeObjectUrl = ""; }
+      try {
+        localStorage.removeItem(CATALOG_CACHE_KEY);
+        localStorage.removeItem(DELETED_SONGS_KEY);
+        localStorage.removeItem(DELETED_FOLDERS_KEY);
+      } catch (_) {}
+      try { await clearOfflineMusic(); }
+      catch (error) { console.warn("Não foi possível limpar as músicas offline:",error); }
+      $("folderView").hidden = true;
+      document.body.classList.remove("in-folder");
+      $("genreCards").hidden = false;
+      updateMarquee($("currentTitle"),"Escolha uma pasta");
+      $("currentArtist").textContent = "Nenhuma faixa disponível";
+      $("currentCover").innerHTML = "<span>♫</span>";
+      $("trackCount").textContent = "0";
+      $("folderCount").textContent = "0";
+      $("folderTotal").textContent = "0 estações";
+      $("genreCards").innerHTML = '<div class="loading-card">Nenhuma pasta de música disponível.</div>';
+      offlineProgress(0,0);
+      const bar = $("offlineProgress");
+      if (bar) bar.classList.remove("busy");
+      offlineStatus("Nenhuma música disponível offline");
+      updateButtons();
+      return;
+    }
 
     const seen = new Set();
     const deletedSongs = getDeletedSongs();
@@ -275,7 +343,7 @@ async function loadCatalog() {
           ((folderFirstSeen.get(a.name) ?? Number.MAX_SAFE_INTEGER) - (folderFirstSeen.get(b.name) ?? Number.MAX_SAFE_INTEGER));
       });
     renderFolders();
-    try { localStorage.setItem("music-catalog-v1",JSON.stringify(songs)); } catch (_) {}
+    try { localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify(songs)); } catch (_) {}
     offlineStatus("Preparando músicas offline…");
     setTimeout(startOfflineSync,800);
     $("trackCount").textContent = songs.length.toLocaleString("pt-BR");
@@ -284,7 +352,7 @@ async function loadCatalog() {
   } catch (error) {
     console.error("Falha ao carregar catálogo:",error);
     try {
-      const saved = JSON.parse(localStorage.getItem("music-catalog-v1") || "null");
+      const saved = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null");
       if (Array.isArray(saved) && saved.length) {
         songs = saved; const counts = new Map(); songs.forEach(song => counts.set(song.folder,(counts.get(song.folder)||0)+1));
         folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]})); renderFolders();
@@ -415,7 +483,7 @@ function deleteCurrentSong() {
   try {
     const remaining = songs.filter(function(item){ return item.audioUrl !== deletedUrl; })
       .map(function(item,index){ return Object.assign({},item,{_index:index}); });
-    localStorage.setItem("music-catalog-v1",JSON.stringify(remaining));
+    localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify(remaining));
   } catch (_) {}
   showToast("Música excluída deste aparelho");
   loadCatalog().then(function() {
@@ -441,7 +509,7 @@ function deleteFolder(folderName) {
   }
   const remaining = songs.filter(function(song){ return song.folder !== folderName; })
     .map(function(song,index){ return Object.assign({},song,{_index:index}); });
-  try { localStorage.setItem("music-catalog-v1",JSON.stringify(remaining)); } catch (_) {}
+  try { localStorage.setItem(CATALOG_CACHE_KEY,JSON.stringify(remaining)); } catch (_) {}
   showToast("Pasta excluída deste aparelho");
   loadCatalog();
 }
