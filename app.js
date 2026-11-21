@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 const audio = $("audio");
 const API = "https://mundo-musical-api.manriquewb1234.workers.dev/catalog";
 const PAGE_SIZE = 100;
+const ALL_GENRES = "__all__";
 const OFFLINE_DB = "music-offline-v2";
 const DELETED_SONGS_KEY = "music-deleted-songs-v1";
 const DELETED_FOLDERS_KEY = "music-deleted-folders-v1";
@@ -16,6 +17,7 @@ let songs = [];
 let folders = [];
 let activeFolder = "";
 let folderSearchTerm = "";
+let activeGenre = ALL_GENRES;
 let queue = [];
 let currentIndex = -1;
 let shuffleEnabled = false;
@@ -31,6 +33,7 @@ let mediaRecoveryId = -1;
 let toastTimer = 0;
 const history = [];
 const palettes = ["#263f70","#50326f","#155c67","#70432d","#3b4e86","#32664e","#74405c","#315b79"];
+const GENERIC_KEY_PREFIXES = new Set(["audio","audios","arquivo","arquivos","biblioteca","catalog","catalogo","files","media","midia","mp3","music","musica","musicas","mundo-musical","music-vip","public","song","songs","track","tracks","upload","uploads"]);
 const FAVORITES_KEY = "music-favorites-v1";
 function getFavorites(){try{return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY)||"[]"));}catch(_){return new Set();}}
 function isFavorite(song){return !!song && getFavorites().has(song.audioUrl);}
@@ -75,6 +78,21 @@ function folderFromSong(song) {
   const raw = safeText(song.key || song.name || song.audioUrl || "");
   const parts = raw.replace(/\\/g,"/").split("/").filter(Boolean);
   return parts.length > 1 ? parts[parts.length - 2] : safeText(song.genre || "Outros");
+}
+function normalizeGenre(value) {
+  return safeText(value).trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("pt-BR");
+}
+function genreFromSong(song) {
+  const folder = safeText(song.folder || folderFromSong(song)).trim();
+  const explicitGenre = safeText(song.genre).trim();
+  if (explicitGenre && normalizeGenre(explicitGenre) !== normalizeGenre(folder)) return explicitGenre;
+  const pathFolders = safeText(song.key).replace(/\\/g,"/").split("/").filter(Boolean).slice(0,-1);
+  for (const segment of pathFolders) {
+    const normalized = normalizeGenre(segment);
+    if (!normalized || GENERIC_KEY_PREFIXES.has(normalized) || /^(19|20)\d{2}$/.test(normalized)) continue;
+    return segment.trim();
+  }
+  return folder || "Outros";
 }
 function showToast(message) {
   const el = $("toast");
@@ -172,11 +190,13 @@ function offlineProgress(done,total) {
 function buildFolderList() {
   const counts = new Map();
   const folderFirstSeen = new Map();
+  const folderGenres = new Map();
   songs.forEach(function(song,index) {
     counts.set(song.folder,(counts.get(song.folder)||0)+1);
+    if (!folderGenres.has(song.folder)) folderGenres.set(song.folder,genreFromSong(song));
     if (!folderFirstSeen.has(song.folder)) folderFirstSeen.set(song.folder,index);
   });
-  folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1]}))
+  folders = Array.from(counts.entries()).map(entry => ({name:entry[0],count:entry[1],genre:folderGenres.get(entry[0])||entry[0]}))
     .sort((a,b) => {
       const priority = function(name) {
         const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -208,7 +228,9 @@ function showAuthenticationRequired() {
   requestId++;audio.pause();audio.removeAttribute("src");audio.load();
   if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl="";}
   songs=[];folders=[];queue=[];activeFolder="";currentIndex=-1;
+  activeGenre=ALL_GENRES;
   $("folderView").hidden=true;document.body.classList.remove("in-folder");
+  $("genreTabs").hidden=true;$("genreTabs").innerHTML="";
   $("genreCards").hidden=false;
   $("genreCards").innerHTML='<div class="loading-card">Entre ou crie uma conta para acessar a biblioteca MUSIC VIP.</div>';
   $("trackCount").textContent="—";$("folderCount").textContent="—";$("folderTotal").textContent="Acesso para membros";
@@ -254,6 +276,8 @@ async function loadCatalog() {
     if (all.length === 0) {
       songs = [];
       folders = [];
+      activeGenre = ALL_GENRES;
+      renderGenreTabs();
       queue = [];
       activeFolder = "";
       currentIndex = -1;
@@ -367,18 +391,49 @@ async function loadCatalog() {
     }
     lifetimeAccess = false;
     songs=[];folders=[];queue=[];activeFolder="";currentIndex=-1;
+    activeGenre=ALL_GENRES;
     $("folderView").hidden=true;document.body.classList.remove("in-folder");
     $("genreCards").hidden=false;
+    renderGenreTabs();
     $("genreCards").innerHTML = '<div class="error-card"><strong>Não conseguimos conectar à biblioteca.</strong><span>Conecte-se à internet para carregar o catálogo e validar seu acesso. A reprodução de áudio exige uma sessão e autorização ativas no servidor.</span><button id="retryCatalog" type="button">Tentar novamente</button></div>';
     $("trackCount").textContent = "Indisponível"; $("folderCount").textContent="0"; $("folderTotal").textContent = "Catálogo indisponível";
     updateButtons();
   }
 }
+function renderGenreTabs() {
+  const tabs = $("genreTabs");
+  if (!tabs) return;
+  const counts = new Map();
+  folders.forEach(function(folder) {
+    const genre = safeText(folder.genre || "Outros").trim() || "Outros";
+    counts.set(genre,(counts.get(genre)||0)+1);
+  });
+  const genres = Array.from(counts.keys()).sort((a,b) => a.localeCompare(b,"pt-BR",{sensitivity:"base"}));
+  if (activeGenre !== ALL_GENRES && !counts.has(activeGenre)) activeGenre = ALL_GENRES;
+  if (!genres.length) {
+    tabs.hidden = true;
+    tabs.innerHTML = "";
+    return;
+  }
+  const options = [{value:ALL_GENRES,label:"Todos",count:folders.length}].concat(genres.map(genre => ({value:genre,label:genre,count:counts.get(genre)})));
+  tabs.hidden = false;
+  tabs.innerHTML = options.map(function(option) {
+    return '<button class="genre-tab" type="button" data-genre="' + escapeHtml(option.value) + '" aria-pressed="' + (activeGenre === option.value) + '"><span>' + escapeHtml(option.label) + '</span><span class="genre-tab-count">' + option.count.toLocaleString("pt-BR") + '</span></button>';
+  }).join("");
+}
 function renderFolders() {
-  const filteredFolders = folders.filter(folder => folder.name.toLocaleLowerCase("pt-BR").includes(folderSearchTerm));
-  $("folderTotal").textContent = folderSearchTerm ? filteredFolders.length + " resultados" : folders.length.toLocaleString("pt-BR") + " estações";
+  renderGenreTabs();
+  const search = normalizeGenre(folderSearchTerm);
+  const filteredFolders = folders.filter(function(folder) {
+    const matchesGenre = activeGenre === ALL_GENRES || folder.genre === activeGenre;
+    const matchesSearch = !search || normalizeGenre(folder.name).includes(search) || normalizeGenre(folder.genre).includes(search);
+    return matchesGenre && matchesSearch;
+  });
+  const count = filteredFolders.length.toLocaleString("pt-BR");
+  const noun = filteredFolders.length === 1 ? "pasta" : "pastas";
+  $("folderTotal").textContent = search ? count + " " + noun + " encontradas" : activeGenre === ALL_GENRES ? count + " " + noun + " disponíveis" : count + " " + noun + " em " + activeGenre;
   if (!filteredFolders.length) {
-    $("genreCards").innerHTML = '<div class="loading-card">Nenhum estilo encontrado. Tente outra busca.</div>';
+    $("genreCards").innerHTML = '<div class="loading-card">Nenhuma pasta encontrada neste gênero. Escolha outro gênero ou ajuste a busca.</div>';
     return;
   }
   $("genreCards").innerHTML = filteredFolders.map(function(folder,index) {
@@ -712,6 +767,12 @@ function setVolume(value) {
   audio.volume = Number(value);
   $("volume").value = String(value);
 }
+$("genreTabs").addEventListener("click",function(event) {
+  const tab = event.target.closest("[data-genre]");
+  if (!tab) return;
+  activeGenre = tab.dataset.genre || ALL_GENRES;
+  renderFolders();
+});
 $("genreCards").addEventListener("click",function(event) {
   const deleteFolderAction = event.target.closest("[data-delete-folder]");
   if (deleteFolderAction) { event.preventDefault(); event.stopPropagation(); deleteFolder(deleteFolderAction.dataset.deleteFolder); return; }

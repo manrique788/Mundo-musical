@@ -491,6 +491,125 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .folder-art { width: 45px; height: 45px; }
   .section-heading { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Navegação horizontal por gênero e pastas em lista vertical. */
+.genre-browser { margin: 25px 0 12px; }
+.genre-browser-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 380px);
+  align-items: end;
+  gap: 22px;
+}
+.genre-browser-head h2 {
+  margin: 8px 0 6px;
+  color: var(--text);
+  font: 650 clamp(25px, 2.8vw, 34px)/1.12 Outfit, sans-serif;
+  letter-spacing: -.045em;
+}
+.genre-browser-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.genre-browser-head .library-search { width: min(100%, 380px); justify-self: end; }
+.genre-browser-meta { display: flex; justify-content: flex-end; margin: 13px 0 5px; }
+.genre-tabs {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 5px 3px 11px;
+  margin-bottom: 3px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.genre-tabs::-webkit-scrollbar { display: none; }
+.genre-tabs[hidden] { display: none !important; }
+.genre-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 1px solid rgba(226, 235, 229, .14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .045);
+  color: #d5ded8;
+  font: 600 12px/1 Outfit, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+.genre-tab:hover { transform: translateY(-1px); border-color: rgba(169, 203, 189, .38); background: rgba(169, 203, 189, .09); }
+.genre-tab[aria-pressed="true"] {
+  border-color: rgba(210, 229, 218, .9);
+  background: linear-gradient(135deg, #d2e5da, #a9cbbd);
+  color: var(--accent-ink);
+  box-shadow: 0 7px 22px rgba(84, 128, 108, .18);
+}
+.genre-tab-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .09);
+  color: #b7c4bc;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.genre-tab[aria-pressed="true"] .genre-tab-count { background: rgba(16, 32, 26, .1); color: var(--accent-ink); }
+#genreCards.folder-list { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 8px; }
+#genreCards.folder-list .folder-card {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  justify-content: initial;
+  gap: 3px 14px;
+  min-height: 112px;
+  padding: 14px 98px 14px 14px;
+  border-radius: 18px;
+}
+#genreCards.folder-list .folder-card:before { width: 125px; height: 125px; right: -45px; top: 50%; transform: translateY(-50%); }
+#genreCards.folder-list .folder-art {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / 4;
+  inset: auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 17px;
+  font-size: 28px;
+}
+#genreCards.folder-list .folder-name { grid-column: 2; grid-row: 1; align-self: end; max-width: none; margin: 0; }
+#genreCards.folder-list .folder-count { grid-column: 2; grid-row: 2; align-self: start; }
+#genreCards.folder-list .folder-access-badge { grid-column: 2; grid-row: 3; align-self: start; margin-top: 7px; white-space: nowrap; }
+#genreCards.folder-list .folder-menu-wrap { top: 8px; right: 9px; left: auto; }
+#genreCards.folder-list .folder-menu { width: 27px; height: 27px; font-size: 19px; line-height: 18px; }
+#genreCards.folder-list .folder-download { right: 51px; bottom: 13px; }
+#genreCards.folder-list .folder-arrow { right: 13px; bottom: 13px; }
+
+@media (max-width: 600px) {
+  .genre-browser { margin: 20px 0 8px; }
+  .genre-browser-head { grid-template-columns: minmax(0, 1fr); gap: 13px; }
+  .genre-browser-head h2 { font-size: 24px; }
+  .genre-browser-head p { font-size: 12px; }
+  .genre-browser-head .library-search { width: 100%; max-width: none; justify-self: stretch; }
+  .genre-browser-meta { margin: 11px 0 4px; }
+  .genre-tab { min-height: 39px; padding: 8px 13px; font-size: 11px; }
+  #genreCards.folder-list { gap: 9px; }
+  #genreCards.folder-list .folder-card { grid-template-columns: 47px minmax(0, 1fr); min-height: 100px; gap: 3px 11px; padding: 12px 83px 12px 12px; border-radius: 16px; }
+  #genreCards.folder-list .folder-art { width: 46px; height: 46px; border-radius: 14px; font-size: 24px; }
+  #genreCards.folder-list .folder-name { font-size: 14px; }
+  #genreCards.folder-list .folder-count { font-size: 10px; }
+  #genreCards.folder-list .folder-access-badge { margin-top: 6px; padding: 5px 7px; font-size: 8px; }
+  #genreCards.folder-list .folder-download { right: 45px; bottom: 11px; width: 28px; height: 28px; }
+  #genreCards.folder-list .folder-arrow { right: 11px; bottom: 11px; width: 28px; height: 28px; }
+  #genreCards.folder-list .folder-menu { width: 25px; height: 25px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
