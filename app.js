@@ -271,6 +271,14 @@ async function loadCatalog() {
     } while (cursor);
     lifetimeAccess = Boolean(catalogAccess && catalogAccess.lifetimeAccess);
     streamingConfigured = Boolean(catalogAccess && catalogAccess.streamingConfigured);
+    if (catalogAccess && catalogAccess.authenticated) {
+      accountGateActive = false;
+      $("accountClose").hidden = false;
+      $("accountBtn").textContent = lifetimeAccess ? "Minha conta · VIP" : "Minha conta";
+      $("accountPlanDisplay").textContent = lifetimeAccess ? "Plano: acesso vitalício ativo" : "Plano: ainda sem acesso vitalício";
+      $("premiumOffer").hidden = lifetimeAccess;
+      $("premiumActive").hidden = !lifetimeAccess;
+    }
 
     // Uma resposta vazia do servidor é definitiva: não ressuscite cópias antigas do aparelho.
     if (all.length === 0) {
@@ -1088,8 +1096,9 @@ $("accountLogout").addEventListener("click",async function(){
   loadCatalog();
 });
 if(getAuthToken()){
+  accountGateActive=false;
+  $("accountClose").hidden=false;
   $("accountBtn").textContent="Minha conta";
-  openAccount("profile");
 }else{
   $("accountBtn").textContent=initialAccountMode()==="register"?"Criar conta":"Entrar";
   openAccount(initialAccountMode());
