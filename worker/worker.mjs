@@ -9,6 +9,7 @@ const PAYMENT_RECONCILE_ORDER_LIMIT = 5;
 const PAYMENT_RECONCILE_PAYMENT_LIMIT = 3;
 const SITE_URL = "https://manrique788.github.io/Mundo-musical/";
 const AUDIO_EXTENSION = /\.(mp3|m4a|wav|ogg|aac|flac)$/i;
+const MAX_CATALOG_PAGES_PER_RESPONSE = 10;
 
 function corsHeaders() {
   return {
@@ -122,14 +123,22 @@ async function hasLifetimeAccess(env, userId) {
   return Boolean(entitlement);
 }
 
-async function sessionIsActive(env, sessionId, userId) {
-  if (!sessionId || !userId) return false;
-  const session = await env.DB.prepare(
-    `SELECT id FROM sessions
-     WHERE id = ? AND user_id = ? AND expires_at > ?
+async function getStreamAuthorization(env, sessionId, userId) {
+  if (!sessionId || !userId) return { sessionActive: false, lifetimeAccess: false };
+  const authorization = await env.DB.prepare(
+    `SELECT sessions.id AS session_id, user_entitlements.id AS entitlement_id
+     FROM sessions
+     LEFT JOIN user_entitlements
+       ON user_entitlements.user_id = sessions.user_id
+       AND user_entitlements.plan = 'lifetime'
+       AND user_entitlements.status = 'active'
+     WHERE sessions.id = ? AND sessions.user_id = ? AND sessions.expires_at > ?
      LIMIT 1`
   ).bind(sessionId, userId, new Date().toISOString()).first();
-  return Boolean(session);
+  return {
+    sessionActive: Boolean(authorization),
+    lifetimeAccess: Boolean(authorization && authorization.entitlement_id)
+  };
 }
 
 async function createMediaTicket(env, claims) {
@@ -388,15 +397,25 @@ async function catalog(request, env, url) {
   if (!user) return json({ error: "Entre na sua conta para acessar a biblioteca" }, 401);
   const lifetimeAccess = await hasLifetimeAccess(env, user.id);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 1000), 1), 1000);
-  const cursor = url.searchParams.get("cursor") || undefined;
-  const pageOptions = { limit };
-  if (cursor) pageOptions.cursor = cursor;
-  const result = await env.MUSIC_BUCKET.list(pageOptions);
+  const aggregatePages = url.searchParams.get("all") === "1";
+  let cursor = url.searchParams.get("cursor") || undefined;
+  let result;
+  let pagesLoaded = 0;
+  const objects = [];
+  do {
+    const pageOptions = { limit };
+    if (cursor) pageOptions.cursor = cursor;
+    result = await env.MUSIC_BUCKET.list(pageOptions);
+    objects.push(...(result.objects || []));
+    pagesLoaded++;
+    cursor = result.truncated ? (result.cursor || undefined) : undefined;
+  } while (aggregatePages && cursor && pagesLoaded < MAX_CATALOG_PAGES_PER_RESPONSE);
+
   const ticket = lifetimeAccess && env.MEDIA_SIGNING_SECRET
     ? await createMediaTicket(env, { scope: "premium", userId: user.id, sessionId: user.session_id })
     : null;
 
-  const songs = (result.objects || []).filter(object => AUDIO_EXTENSION.test(object.key)).map(object => {
+  const songs = objects.filter(object => AUDIO_EXTENSION.test(object.key)).map(object => {
     const fileName = object.key.split("/").pop();
     const title = fileName.replace(/\.[^.]+$/, "").replace(/^\d+\s*-\s*/, "").trim();
     const encodedPath = encodeObjectKey(object.key);
@@ -415,7 +434,8 @@ async function catalog(request, env, url) {
 
   return json({
     songs,
-    nextCursor: result.truncated ? result.cursor : null,
+    nextCursor: cursor || null,
+    pagesLoaded,
     count: songs.length,
     access: {
       authenticated: true,
@@ -435,10 +455,11 @@ async function streamAuthorized(request, env, url) {
   if (claims.scope !== "premium" || !claims.sid || !claims.sub) {
     return json({ error: "Acesso vitalício necessário" }, 403);
   }
-  if (!(await sessionIsActive(env, claims.sid, claims.sub))) {
+  const authorization = await getStreamAuthorization(env, claims.sid, claims.sub);
+  if (!authorization.sessionActive) {
     return json({ error: "Sessão encerrada ou expirada" }, 401);
   }
-  if (!(await hasLifetimeAccess(env, claims.sub))) return json({ error: "Acesso vitalício não encontrado" }, 403);
+  if (!authorization.lifetimeAccess) return json({ error: "Acesso vitalício não encontrado" }, 403);
 
   return streamR2(request, env, key);
 }

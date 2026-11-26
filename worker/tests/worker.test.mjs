@@ -54,7 +54,7 @@ function fakeR2Object(bytes, fullSize = bytes.length) {
   };
 }
 
-function testEnvironment() {
+function testEnvironment(objects = testObjects) {
   const audio = new Map([
     ["Funk/01 - Faixa A.mp3", encoder.encode("AUDIO A")],
     ["Funk/02 - Faixa B.mp3", encoder.encode("AUDIO B")],
@@ -63,7 +63,15 @@ function testEnvironment() {
   let headCalls = 0;
   let listCalls = 0;
   const bucket = {
-    async list() { listCalls++; return { objects: testObjects, truncated: false }; },
+    async list(options = {}) {
+      listCalls++;
+      const start = options.cursor ? Number(options.cursor) : 0;
+      const limit = Number(options.limit) || 1000;
+      const page = objects.slice(start, start + limit);
+      const next = start + page.length;
+      const truncated = next < objects.length;
+      return { objects: page, truncated, cursor: truncated ? String(next) : undefined };
+    },
     async head(key) { headCalls++; return audio.has(key) ? fakeR2Object(audio.get(key)) : null; },
     async get(key, options) {
       const bytes = audio.get(key);
@@ -84,16 +92,23 @@ function testEnvironment() {
   };
 }
 
-function authenticatedEnvironment({ entitled = false, sessionActive = true } = {}) {
-  const env = testEnvironment();
+function authenticatedEnvironment({ entitled = false, sessionActive = true, objects = testObjects } = {}) {
+  const env = testEnvironment(objects);
   const user = { id: "user-1", email: "test@example.com", session_id: "session-1", expires_at: "2099-01-01T00:00:00.000Z" };
   const state = { entitled, sessionActive };
+  let streamAuthorizationQueries = 0;
   env.DB = {
     prepare(sql) {
       return {
         bind() {
           return {
             async first() {
+              if (sql.includes("FROM sessions") && sql.includes("LEFT JOIN user_entitlements")) {
+                streamAuthorizationQueries++;
+                return state.sessionActive
+                  ? { session_id: user.session_id, entitlement_id: state.entitled ? "entitlement-1" : null }
+                  : null;
+              }
               if (sql.includes("JOIN users")) return user;
               if (sql.includes("user_entitlements")) return state.entitled ? { id: "entitlement-1" } : null;
               if (sql.includes("WHERE id = ? AND user_id = ?")) return state.sessionActive ? { id: user.session_id } : null;
@@ -104,7 +119,7 @@ function authenticatedEnvironment({ entitled = false, sessionActive = true } = {
       };
     }
   };
-  return { env, user, state };
+  return { env, user, state, getStreamAuthorizationQueryCount: () => streamAuthorizationQueries };
 }
 
 function paymentReconciliationEnvironment() {
@@ -260,6 +275,44 @@ test("conta autenticada sem entitlement recebe metadados, mas nenhum ticket de �
   assert.equal(env.MUSIC_BUCKET.headCallCount, 0);
 });
 
+test("agrega páginas do catálogo em uma resposta quando all=1", async () => {
+  const { env } = authenticatedEnvironment({ entitled: false });
+  const response = await musicWorker.fetch(new Request("https://worker.example/catalog?limit=1&all=1", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), env);
+  assert.equal(response.status, 200);
+  const catalog = await response.json();
+  assert.equal(catalog.songs.length, testObjects.length);
+  assert.equal(catalog.pagesLoaded, testObjects.length);
+  assert.equal(catalog.nextCursor, null);
+  assert.equal(env.MUSIC_BUCKET.listCallCount, testObjects.length);
+});
+
+test("mantém o cursor normal e limita a dez páginas agregadas por resposta", async () => {
+  const standard = authenticatedEnvironment({ entitled: false });
+  const standardResponse = await musicWorker.fetch(new Request("https://worker.example/catalog?limit=1", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), standard.env);
+  const standardCatalog = await standardResponse.json();
+  assert.equal(standardCatalog.songs.length, 1);
+  assert.equal(standardCatalog.pagesLoaded, 1);
+  assert.equal(standardCatalog.nextCursor, "1");
+  assert.equal(standard.env.MUSIC_BUCKET.listCallCount, 1);
+
+  const objects = Array.from({ length: 11 }, (_, index) => ({
+    key: `Funk/${String(index + 1).padStart(2, "0")} - Faixa ${index + 1}.mp3`
+  }));
+  const aggregated = authenticatedEnvironment({ entitled: false, objects });
+  const aggregatedResponse = await musicWorker.fetch(new Request("https://worker.example/catalog?limit=1&all=1", {
+    headers: { Authorization: "Bearer test-session-token" }
+  }), aggregated.env);
+  const aggregatedCatalog = await aggregatedResponse.json();
+  assert.equal(aggregatedCatalog.songs.length, 10);
+  assert.equal(aggregatedCatalog.pagesLoaded, 10);
+  assert.equal(aggregatedCatalog.nextCursor, "10");
+  assert.equal(aggregated.env.MUSIC_BUCKET.listCallCount, 10);
+});
+
 test("rejeita tickets trial assinados e não lê R2", async () => {
   const env = testEnvironment();
   const now = Math.floor(Date.now() / 1000);
@@ -276,7 +329,7 @@ test("rejeita tickets trial assinados e não lê R2", async () => {
 });
 
 test("entitlement vitalício ativo emite tickets premium e permite o streaming protegido", async () => {
-  const { env } = authenticatedEnvironment({ entitled: true });
+  const { env, getStreamAuthorizationQueryCount } = authenticatedEnvironment({ entitled: true });
   const catalogResponse = await musicWorker.fetch(new Request("https://worker.example/catalog", {
     headers: { Authorization: "Bearer test-session-token" }
   }), env);
@@ -289,10 +342,11 @@ test("entitlement vitalício ativo emite tickets premium e permite o streaming p
   const streamResponse = await musicWorker.fetch(new Request(song.streamUrl), env);
   assert.equal(streamResponse.status, 200);
   assert.equal(await streamResponse.text(), "AUDIO A");
+  assert.equal(getStreamAuthorizationQueryCount(), 1);
 });
 
 test("revalida sessão e entitlement em cada pedido de mídia", async () => {
-  const { env, state } = authenticatedEnvironment({ entitled: true });
+  const { env, state, getStreamAuthorizationQueryCount } = authenticatedEnvironment({ entitled: true });
   const catalogResponse = await musicWorker.fetch(new Request("https://worker.example/catalog", {
     headers: { Authorization: "Bearer test-session-token" }
   }), env);
@@ -307,6 +361,7 @@ test("revalida sessão e entitlement em cada pedido de mídia", async () => {
   state.entitled = false;
   const removedEntitlement = await musicWorker.fetch(new Request(song.streamUrl), env);
   assert.equal(removedEntitlement.status, 403);
+  assert.equal(getStreamAuthorizationQueryCount(), 2);
   assert.equal(env.MUSIC_BUCKET.headCallCount, 0);
 });
 

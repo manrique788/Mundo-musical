@@ -255,6 +255,7 @@ async function loadCatalog() {
     do {
       const url = new URL(API);
       url.searchParams.set("limit","1000");
+      url.searchParams.set("all","1");
       if (cursor) url.searchParams.set("cursor",cursor);
       const headers = {};
       const token = getAuthToken();
@@ -266,7 +267,7 @@ async function loadCatalog() {
       if (data.access) catalogAccess = data.access;
       all.push.apply(all,data.songs);
       cursor = data.nextCursor || "";
-      pageCount++;
+      pageCount += Math.max(1, Number(data.pagesLoaded) || 1);
       if (pageCount > 100) throw new Error("Paginação interrompida por segurança");
     } while (cursor);
     lifetimeAccess = Boolean(catalogAccess && catalogAccess.lifetimeAccess);
