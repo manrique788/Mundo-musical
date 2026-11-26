@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=99">
-<link rel="stylesheet" href="premium-refresh.css?v=4">
+<link rel="stylesheet" href="premium-refresh.css?v=5">
 <title>MUSIC VIP — Sua música, seu ritmo</title>
 </head>
 <body>
@@ -151,8 +151,18 @@
           <span class="premium-offer-kicker">PLANO VITALÍCIO</span>
           <strong class="premium-offer-price">R$ 15,00</strong>
           <p>Pagamento único. Sem mensalidade. Acesso vitalício à biblioteca MUSIC VIP.</p>
-          <p>Pagamento protegido pelo Mercado Pago. As formas disponíveis aparecem no checkout.</p>
+          <p>Pagamento protegido pelo Mercado Pago. Escolha Pix por QR Code ou abra o checkout para outras formas.</p>
           <button class="account-submit premium-offer-button" id="premiumBuy" type="button">Desbloquear com Mercado Pago</button>
+          <button class="account-submit premium-offer-button premium-pix-button" id="pixBuy" type="button" disabled>Pagar com Pix · QR Code</button>
+          <div class="pix-payment-panel" id="pixPaymentPanel" hidden>
+            <p class="pix-payment-status" id="pixPaymentStatus" role="status" aria-live="polite">Aguardando pagamento Pix.</p>
+            <img class="pix-qr-image" id="pixQrImage" alt="QR Code Pix do Mercado Pago" hidden>
+            <label for="pixCopyCode">Pix Copia e Cola</label>
+            <textarea id="pixCopyCode" rows="3" readonly spellcheck="false" aria-label="Código Pix Copia e Cola"></textarea>
+            <button class="account-submit pix-copy-button" id="copyPixCode" type="button">Copiar código Pix</button>
+            <a class="pix-ticket-link" id="pixTicketLink" target="_blank" rel="noopener noreferrer" hidden>Abrir instruções de pagamento</a>
+            <button class="account-submit pix-check-button" id="pixCheckNow" type="button">Já paguei — verificar</button>
+          </div>
           <p class="payment-feedback" id="paymentFeedback" role="status" aria-live="polite"></p>
         </div>
         <div class="premium-active" id="premiumActive" hidden>
@@ -180,7 +190,7 @@
   </style>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=108"></script>
+<script src="app.js?v=109"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>

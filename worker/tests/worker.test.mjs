@@ -871,6 +871,16 @@ function webhookTestEnvironment() {
     currency_id: "BRL",
     status: "pending"
   };
+  const pixOrder = {
+    id: "pix-order-1",
+    user_id: "user-1",
+    provider_payment_id: "payment-pix-1",
+    amount_cents: 1500,
+    currency_id: "BRL",
+    status: "pending",
+    qr_code: "000201-pix-test",
+    qr_code_base64: "aVZCT1J3MEtHZ289"
+  };
   let batchCalls = 0;
   env.MERCADOPAGO_ACCESS_TOKEN = "unit-test-access-token";
   env.MERCADOPAGO_WEBHOOK_SECRET = "unit-test-webhook-secret";
@@ -882,6 +892,9 @@ function webhookTestEnvironment() {
             async first() {
               if (sql.includes("FROM checkout_orders") && sql.includes("WHERE id = ?")) {
                 return values[0] === order.id ? order : null;
+              }
+              if (sql.includes("FROM pix_checkout_orders") && sql.includes("WHERE id = ?")) {
+                return values[0] === pixOrder.id ? pixOrder : null;
               }
               if (sql.includes("FROM checkout_orders") && sql.includes("WHERE preference_id = ?")) {
                 return values[0] === order.preference_id ? order : null;
@@ -898,7 +911,54 @@ function webhookTestEnvironment() {
       return statements.map(() => ({ meta: { changes: 1 } }));
     }
   };
-  return { env, order, batchCalls: () => batchCalls };
+  return { env, order, pixOrder, batchCalls: () => batchCalls };
+}
+
+function pixCheckoutTestEnvironment() {
+  const env = testEnvironment();
+  const user = { id: "user-1", email: "test@example.com", session_id: "session-1", expires_at: "2099-01-01T00:00:00.000Z" };
+  const state = { order: null };
+  env.MERCADOPAGO_ACCESS_TOKEN = "unit-test-access-token";
+  env.MERCADOPAGO_WEBHOOK_SECRET = "unit-test-webhook-secret";
+  env.DB = {
+    prepare(sql) {
+      return {
+        sql,
+        bind(...values) {
+          return {
+            sql,
+            values,
+            async first() {
+              if (sql.includes("JOIN users")) return user;
+              if (sql.includes("FROM user_entitlements")) return null;
+              if (sql.includes("FROM pix_checkout_orders") && sql.includes("WHERE user_id = ?")) return null;
+              if (sql.includes("FROM payments WHERE provider_payment_id")) return null;
+              return null;
+            },
+            async run() {
+              if (sql.includes("INSERT INTO pix_checkout_orders")) {
+                state.order = {
+                  id: values[0], user_id: values[1], provider: "mercadopago",
+                  amount_cents: values[2], currency_id: "BRL", status: "creating"
+                };
+                return { meta: { changes: 1 } };
+              }
+              if (sql.includes("UPDATE pix_checkout_orders") && sql.includes("SET provider_payment_id")) {
+                Object.assign(state.order, {
+                  provider_payment_id: values[0], status: values[1], qr_code: values[2],
+                  qr_code_base64: values[3], ticket_url: values[4], updated_at: values[5]
+                });
+                return { meta: { changes: 1 } };
+              }
+              return { meta: { changes: 1 } };
+            }
+          };
+        }
+      };
+    },
+    async batch(statements) { return statements.map(() => ({ meta: { changes: 1 } })); }
+  };
+  return { env, user, state };
 }
 
 async function signedWebhookRequest(secret, paymentId) {
@@ -985,4 +1045,83 @@ test("webhook continua persistindo pagamento de produção com referência e pre
   assert.equal(response.status, 200);
   assert.equal((await response.json()).ok, true);
   assert.equal(batchCalls(), 1);
+});
+
+test("Pix cria QR dinâmico vinculado ao pedido, com idempotência e sem cobrança real nos testes", async () => {
+  const { env, state } = pixCheckoutTestEnvironment();
+  let requestBody;
+  const response = await withMockedFetch(async (input, init) => {
+    assert.equal(new URL(String(input)).pathname, "/v1/payments");
+    assert.equal(init.headers["X-Idempotency-Key"], state.order.id);
+    requestBody = JSON.parse(init.body);
+    assert.equal(requestBody.payment_method_id, "pix");
+    assert.equal(requestBody.transaction_amount, 15);
+    assert.equal(requestBody.payer.email, "test@example.com");
+    assert.equal(requestBody.notification_url, "https://worker.example/payments/webhook");
+    return new Response(JSON.stringify({
+      id: "payment-pix-1",
+      status: "pending",
+      live_mode: true,
+      payment_method_id: "pix",
+      external_reference: requestBody.external_reference,
+      transaction_amount: 15,
+      currency_id: "BRL",
+      point_of_interaction: { transaction_data: {
+        qr_code: "000201-pix-test",
+        qr_code_base64: "aVZCT1J3MEtHZ289",
+        ticket_url: "https://www.mercadopago.com.br/payments/123/ticket"
+      } }
+    }), { status: 201 });
+  }, () => musicWorker.fetch(new Request("https://worker.example/payments/pix", {
+    method: "POST",
+    headers: { Authorization: "Bearer session-token", "Content-Type": "application/json" },
+    body: "{}"
+  }), env));
+
+  const result = await response.json();
+  assert.equal(response.status, 201);
+  assert.equal(result.pixPayment.qrCode, "000201-pix-test");
+  assert.equal(result.pixPayment.status, "pending");
+  assert.equal(state.order.id, requestBody.external_reference);
+  assert.equal(state.order.provider_payment_id, "payment-pix-1");
+  assert.equal(state.order.status, "pending");
+});
+
+test("webhook Pix libera acesso com pagamento assinado e correspondência exata, sem exigir preference_id", async () => {
+  const { env, batchCalls } = webhookTestEnvironment();
+  const request = await signedWebhookRequest(env.MERCADOPAGO_WEBHOOK_SECRET, "payment-pix-1");
+  const response = await withMockedFetch(async input => {
+    assert.equal(new URL(String(input)).pathname, "/v1/payments/payment-pix-1");
+    return new Response(JSON.stringify({
+      id: "payment-pix-1",
+      status: "approved",
+      live_mode: true,
+      external_reference: "pix-order-1",
+      payment_method_id: "pix",
+      transaction_amount: 15,
+      currency_id: "BRL"
+    }), { status: 200 });
+  }, () => musicWorker.fetch(request, env));
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ok, true);
+  assert.equal(batchCalls(), 1);
+});
+
+test("webhook Pix não aceita outro ID de pagamento mesmo com a referência do pedido correta", async () => {
+  const { env, batchCalls } = webhookTestEnvironment();
+  const request = await signedWebhookRequest(env.MERCADOPAGO_WEBHOOK_SECRET, "payment-other-1");
+  const response = await withMockedFetch(async () => new Response(JSON.stringify({
+    id: "payment-other-1",
+    status: "approved",
+    live_mode: true,
+    external_reference: "pix-order-1",
+    payment_method_id: "pix",
+    transaction_amount: 15,
+    currency_id: "BRL"
+  }), { status: 200 }), () => musicWorker.fetch(request, env));
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ignored, true);
+  assert.equal(batchCalls(), 0);
 });

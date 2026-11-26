@@ -566,20 +566,216 @@ async function checkout(request, env) {
   return json({ ok: true, checkoutUrl: preference.init_point, preferenceId: String(preference.id) }, 201);
 }
 
+async function pixCheckout(request, env) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ error: "Entre na sua conta para continuar" }, 401);
+  if (await hasLifetimeAccess(env, user.id)) return json({ ok: true, lifetimeAccess: true });
+  if (!env.MERCADOPAGO_ACCESS_TOKEN || !env.MERCADOPAGO_WEBHOOK_SECRET) {
+    return json({ error: "O pagamento ainda não está configurado. Tente novamente mais tarde." }, 503);
+  }
+
+  let activePix;
+  let creatingOrder;
+  try {
+    activePix = await env.DB.prepare(
+      `SELECT id, provider_payment_id, amount_cents, currency_id, status,
+              qr_code, qr_code_base64, ticket_url, created_at
+       FROM pix_checkout_orders
+       WHERE user_id = ? AND provider = 'mercadopago' AND status = 'pending'
+         AND provider_payment_id IS NOT NULL AND qr_code IS NOT NULL AND qr_code_base64 IS NOT NULL
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(user.id).first();
+    if (!activePix) {
+      creatingOrder = await env.DB.prepare(
+        `SELECT id FROM pix_checkout_orders
+         WHERE user_id = ? AND provider = 'mercadopago' AND status = 'creating'
+         ORDER BY created_at DESC LIMIT 1`
+      ).bind(user.id).first();
+    }
+  } catch (error) {
+    console.error("Não foi possível carregar um Pix pendente.");
+    return json({ error: "O Pix ainda não está disponível. Tente novamente mais tarde." }, 503);
+  }
+  if (activePix) {
+    return json({
+      ok: true,
+      pixPayment: {
+        status: activePix.status,
+        qrCode: activePix.qr_code,
+        qrCodeBase64: activePix.qr_code_base64,
+        ticketUrl: activePix.ticket_url || "",
+        amountCents: activePix.amount_cents,
+        createdAt: activePix.created_at
+      }
+    });
+  }
+
+  const orderId = creatingOrder ? String(creatingOrder.id) : crypto.randomUUID();
+  if (!creatingOrder) {
+    try {
+      await env.DB.prepare(
+        `INSERT INTO pix_checkout_orders
+          (id, user_id, provider, amount_cents, currency_id, status)
+         VALUES (?, ?, 'mercadopago', ?, 'BRL', 'creating')`
+      ).bind(orderId, user.id, PREMIUM_AMOUNT_CENTS).run();
+    } catch (error) {
+      console.error("Falha ao registrar um pedido Pix no D1.");
+      return json({ error: "Não foi possível iniciar o Pix. Tente novamente." }, 500);
+    }
+  }
+
+  const markFailed = async () => {
+    try {
+      await env.DB.prepare(
+        `UPDATE pix_checkout_orders SET status = 'failed', updated_at = ?
+         WHERE id = ? AND user_id = ? AND status = 'creating'`
+      ).bind(new Date().toISOString(), orderId, user.id).run();
+    } catch {}
+  };
+
+  let response;
+  try {
+    response = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${env.MERCADOPAGO_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": orderId
+      },
+      body: JSON.stringify({
+        transaction_amount: PREMIUM_AMOUNT_CENTS / 100,
+        description: "MUSIC VIP — Acesso vitalício",
+        payment_method_id: "pix",
+        payer: { email: user.email },
+        external_reference: orderId,
+        metadata: { user_id: user.id, order_id: orderId, access_plan: "lifetime" },
+        notification_url: `${new URL(request.url).origin}/payments/webhook`,
+        statement_descriptor: "MUSIC VIP"
+      })
+    });
+  } catch (error) {
+    console.error("Falha ao criar Pix Mercado Pago.");
+    return json({ error: "Não foi possível confirmar se o Pix foi criado. Toque novamente para verificar com segurança." }, 502);
+  }
+
+  const payment = await response.json().catch(() => null);
+  const transactionData = payment && payment.point_of_interaction && payment.point_of_interaction.transaction_data || {};
+  const qrCode = typeof transactionData.qr_code === "string" && transactionData.qr_code.length <= 4096
+    ? transactionData.qr_code
+    : "";
+  const qrCodeBase64 = typeof transactionData.qr_code_base64 === "string" &&
+    transactionData.qr_code_base64.length <= 100000 &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(transactionData.qr_code_base64)
+    ? transactionData.qr_code_base64
+    : "";
+  let ticketUrl = "";
+  try {
+    const parsedTicketUrl = new URL(String(transactionData.ticket_url || ""));
+    if (parsedTicketUrl.protocol === "https:" && parsedTicketUrl.hostname === "www.mercadopago.com.br") {
+      ticketUrl = parsedTicketUrl.href;
+    }
+  } catch {}
+
+  const paymentMatches = payment &&
+    String(payment.id || "").length > 0 && String(payment.id).length <= 64 &&
+    payment.payment_method_id === "pix" &&
+    payment.live_mode === true &&
+    String(payment.external_reference || "") === orderId &&
+    Math.round(Number(payment.transaction_amount) * 100) === PREMIUM_AMOUNT_CENTS &&
+    String(payment.currency_id || "") === "BRL" &&
+    ["pending", "approved"].includes(String(payment.status || "")) &&
+    Boolean(qrCode && qrCodeBase64);
+
+  if (!response.ok || !paymentMatches) {
+    if (response.status < 500 && response.status !== 429) await markFailed();
+    console.error("Mercado Pago não conseguiu gerar um Pix:", response.status);
+    return json({
+      error: "Não foi possível gerar o Pix. Verifique se há uma chave Pix cadastrada na conta recebedora e tente novamente."
+    }, 502);
+  }
+
+  const paymentId = String(payment.id);
+  const now = new Date().toISOString();
+  let update;
+  try {
+    update = await env.DB.prepare(
+      `UPDATE pix_checkout_orders
+       SET provider_payment_id = ?, status = ?, qr_code = ?, qr_code_base64 = ?, ticket_url = ?, updated_at = ?
+       WHERE id = ? AND user_id = ? AND provider = 'mercadopago' AND status = 'creating'`
+    ).bind(paymentId, String(payment.status), qrCode, qrCodeBase64, ticketUrl, now, orderId, user.id).run();
+  } catch (error) {
+    console.error("Falha ao guardar os dados do Pix no D1.");
+    return json({ error: "O Pix foi criado, mas não foi possível registrar o pedido. Não faça o pagamento; atualize a tela e tente novamente." }, 500);
+  }
+  if (update && update.meta && Number(update.meta.changes) !== 1) {
+    return json({ error: "O Pix foi criado, mas o pedido não pôde ser confirmado. Não faça o pagamento; tente novamente." }, 500);
+  }
+
+  const order = {
+    id: orderId,
+    user_id: user.id,
+    provider: "mercadopago",
+    provider_payment_id: paymentId,
+    amount_cents: PREMIUM_AMOUNT_CENTS,
+    currency_id: "BRL",
+    status: String(payment.status),
+    checkout_type: "pix"
+  };
+  if (payment.status === "approved") await persistPayment(env, order, payment);
+
+  return json({
+    ok: true,
+    pixPayment: {
+      status: String(payment.status),
+      qrCode,
+      qrCodeBase64,
+      ticketUrl,
+      amountCents: PREMIUM_AMOUNT_CENTS,
+      createdAt: now
+    }
+  }, 201);
+}
+
 async function paymentStatus(request, env) {
   const user = await authenticate(request, env);
   if (!user) return json({ error: "Sessão inválida ou expirada" }, 401);
   await reconcilePendingPayments(env, user.id);
+  await reconcilePendingPixPayments(env, user.id);
   const latestOrder = await env.DB.prepare(
     `SELECT status, created_at FROM checkout_orders
      WHERE user_id = ? AND provider = 'mercadopago'
      ORDER BY created_at DESC LIMIT 1`
   ).bind(user.id).first();
+  let latestPixOrder = null;
+  try {
+    latestPixOrder = await env.DB.prepare(
+      `SELECT status, created_at, amount_cents, qr_code, qr_code_base64, ticket_url
+       FROM pix_checkout_orders WHERE user_id = ? AND provider = 'mercadopago'
+       ORDER BY created_at DESC LIMIT 1`
+    ).bind(user.id).first();
+  } catch {}
+  const orderCandidates = [latestOrder, latestPixOrder].filter(Boolean);
+  const newestOrder = orderCandidates.sort((left, right) =>
+    Date.parse(right.created_at || "") - Date.parse(left.created_at || "")
+  )[0] || null;
+  const lifetimeAccess = await hasLifetimeAccess(env, user.id);
+  const pixPayment = latestPixOrder && latestPixOrder.status === "pending" &&
+    latestPixOrder.qr_code && latestPixOrder.qr_code_base64
+    ? {
+        status: latestPixOrder.status,
+        qrCode: latestPixOrder.qr_code,
+        qrCodeBase64: latestPixOrder.qr_code_base64,
+        ticketUrl: latestPixOrder.ticket_url || "",
+        amountCents: latestPixOrder.amount_cents,
+        createdAt: latestPixOrder.created_at
+      }
+    : null;
   return json({
     ok: true,
-    lifetimeAccess: await hasLifetimeAccess(env, user.id),
-    paymentStatus: latestOrder ? latestOrder.status : null,
-    lastCheckoutAt: latestOrder ? latestOrder.created_at : null
+    lifetimeAccess,
+    paymentStatus: newestOrder ? newestOrder.status : null,
+    lastCheckoutAt: newestOrder ? newestOrder.created_at : null,
+    pixPayment
   });
 }
 
@@ -597,7 +793,20 @@ async function persistPayment(env, order, payment) {
     return false;
   }
 
+  const orderUpdateStatement = order.checkout_type === "pix"
+    ? env.DB.prepare(
+        `UPDATE pix_checkout_orders
+         SET status = ?, provider_payment_id = ?, updated_at = ?
+         WHERE id = ? AND user_id = ? AND provider = 'mercadopago'
+           AND (provider_payment_id IS NULL OR provider_payment_id = ?)`
+      ).bind(status, providerPaymentId, now, order.id, order.user_id, providerPaymentId)
+    : env.DB.prepare(
+        `UPDATE checkout_orders
+         SET status = ?, provider_payment_id = ?, updated_at = ?
+         WHERE id = ? AND user_id = ?`
+      ).bind(status, providerPaymentId, now, order.id, order.user_id);
   const statements = [
+    orderUpdateStatement,
     env.DB.prepare(
       `INSERT INTO payments
         (id, user_id, subscription_id, provider, provider_payment_id, amount_cents, status, paid_at)
@@ -607,12 +816,7 @@ async function persistPayment(env, order, payment) {
          status = excluded.status,
          paid_at = excluded.paid_at
        WHERE payments.provider = 'mercadopago' AND payments.user_id = excluded.user_id`
-    ).bind(paymentRowId, order.user_id, providerPaymentId, amountCents, status, paidAt),
-    env.DB.prepare(
-      `UPDATE checkout_orders
-       SET status = ?, provider_payment_id = ?, updated_at = ?
-       WHERE id = ? AND user_id = ?`
-    ).bind(status, providerPaymentId, now, order.id, order.user_id)
+    ).bind(paymentRowId, order.user_id, providerPaymentId, amountCents, status, paidAt)
   ];
 
   if (status === "approved") {
@@ -986,6 +1190,59 @@ async function reconcilePendingPayments(env, userId) {
   }
 }
 
+async function reconcilePendingPixPayments(env, userId) {
+  if (!env.MERCADOPAGO_ACCESS_TOKEN || !userId) return;
+  let pendingOrders;
+  try {
+    pendingOrders = await env.DB.prepare(
+      `SELECT id, user_id, provider_payment_id, amount_cents, currency_id, status, last_reconciled_at
+       FROM pix_checkout_orders
+       WHERE user_id = ? AND provider = 'mercadopago' AND status = 'pending'
+       ORDER BY created_at DESC LIMIT ?`
+    ).bind(userId, PAYMENT_RECONCILE_ORDER_LIMIT).all();
+  } catch {
+    console.error("Não foi possível carregar pedidos Pix pendentes para reconciliação.");
+    return;
+  }
+
+  const orders = Array.isArray(pendingOrders && pendingOrders.results) ? pendingOrders.results : [];
+  for (const order of orders) {
+    const paymentId = String(order.provider_payment_id || "");
+    if (!paymentId || paymentId.length > 64) continue;
+    try {
+      const now = Date.now();
+      const checkedAt = new Date(now).toISOString();
+      const cutoff = new Date(now - PAYMENT_RECONCILE_INTERVAL_MS).toISOString();
+      const claim = await env.DB.prepare(
+        `UPDATE pix_checkout_orders SET last_reconciled_at = ?
+         WHERE id = ? AND user_id = ? AND provider = 'mercadopago' AND status = 'pending'
+           AND (last_reconciled_at IS NULL OR last_reconciled_at <= ?)`
+      ).bind(checkedAt, order.id, userId, cutoff).run();
+      if (Number(claim && claim.meta && claim.meta.changes || 0) !== 1) continue;
+
+      const response = await fetch(
+        `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`,
+        { headers: { "Authorization": `Bearer ${env.MERCADOPAGO_ACCESS_TOKEN}`, "Accept": "application/json" } }
+      );
+      if (!response.ok) continue;
+      const payment = await response.json().catch(() => null);
+      const matches = payment &&
+        String(payment.id || "") === paymentId &&
+        payment.live_mode === true &&
+        String(payment.external_reference || "") === String(order.id) &&
+        payment.payment_method_id === "pix" &&
+        Math.round(Number(payment.transaction_amount) * 100) === Number(order.amount_cents) &&
+        String(payment.currency_id || "") === String(order.currency_id || "BRL") &&
+        ["pending", "approved", "rejected", "cancelled", "refunded", "charged_back"].includes(String(payment.status || ""));
+      if (!matches) continue;
+
+      await persistPayment(env, { ...order, checkout_type: "pix" }, payment);
+    } catch {
+      console.error("Não foi possível reconciliar um pedido Pix com o Mercado Pago.");
+    }
+  }
+}
+
 async function paymentWebhook(request, env, url) {
   if (request.method !== "POST") return json({ error: "Use POST" }, 405);
   let notification = {};
@@ -1026,6 +1283,25 @@ async function paymentWebhook(request, env, url) {
   if (payment.live_mode !== true) return json({ ok: true, ignored: true });
 
   const externalReference = String(payment.external_reference || "");
+  const pixOrder = externalReference ? await env.DB.prepare(
+    `SELECT id, user_id, provider_payment_id, amount_cents, currency_id, status
+     FROM pix_checkout_orders WHERE id = ? AND provider = 'mercadopago' LIMIT 1`
+  ).bind(externalReference).first() : null;
+  if (pixOrder) {
+    const pixPaymentMatches =
+      String(payment.id || "") === String(pixOrder.provider_payment_id || "") &&
+      payment.payment_method_id === "pix" &&
+      externalReference === String(pixOrder.id) &&
+      Math.round(Number(payment.transaction_amount) * 100) === Number(pixOrder.amount_cents) &&
+      String(payment.currency_id || "") === String(pixOrder.currency_id || "BRL");
+    if (!pixPaymentMatches) {
+      console.warn("Pagamento Pix recebido não corresponde aos dados do pedido.");
+      return json({ ok: true, ignored: true });
+    }
+    const persistedPix = await persistPayment(env, { ...pixOrder, checkout_type: "pix" }, payment);
+    return persistedPix ? json({ ok: true }) : json({ ok: true, ignored: true });
+  }
+
   let order = externalReference ? await env.DB.prepare(
     `SELECT id, user_id, preference_id, amount_cents, currency_id, status
      FROM checkout_orders WHERE id = ? AND provider = 'mercadopago' LIMIT 1`
@@ -1073,6 +1349,7 @@ async function route(request, env) {
   if (path === "/auth/logout") return request.method === "POST" ? logout(request, env) : json({ error: "Use POST" }, 405);
   if (path === "/catalog") return request.method === "GET" ? catalog(request, env, url) : json({ error: "Use GET" }, 405);
   if (path.startsWith("/stream/") && ["GET", "HEAD"].includes(request.method)) return streamAuthorized(request, env, url);
+  if (path === "/payments/pix") return request.method === "POST" ? pixCheckout(request, env) : json({ error: "Use POST" }, 405);
   if (path === "/payments/checkout") return request.method === "POST" ? checkout(request, env) : json({ error: "Use POST" }, 405);
   if (path === "/payments/status") return request.method === "GET" ? paymentStatus(request, env) : json({ error: "Use GET" }, 405);
   if (path === "/payments/webhook") return paymentWebhook(request, env, url);

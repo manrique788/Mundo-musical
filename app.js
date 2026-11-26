@@ -26,6 +26,8 @@ let streamingConfigured = false;
 let paymentsConfigured = false;
 let pendingAccessMessage = "";
 let pendingPaymentReturn = false;
+let pixPollTimer = null;
+let pixPollActive = false;
 
 let visibleLimit = PAGE_SIZE;
 let requestId = 0;
@@ -903,6 +905,8 @@ function closeAccount(){if(accountGateActive)return;const modal=$("accountModal"
 function returnToMusicFoldersAfterPayment(){
   if(!pendingPaymentReturn)return;
   pendingPaymentReturn=false;
+  stopPixPolling();
+  $("pixPaymentPanel").hidden=true;
   accountGateActive=false;
   $("accountClose").hidden=false;
   closeAccount();
@@ -952,6 +956,11 @@ async function refreshAccount(){
       }else if(payment.paymentStatus==="pending"){
         $("paymentFeedback").textContent="Pagamento pendente de confirmação. O acesso será liberado somente após validação pelo servidor.";
       }
+      if(!payment.lifetimeAccess&&payment.pixPayment){
+        displayPixPayment(payment.pixPayment);
+        pendingPaymentReturn=true;
+        startPixPolling();
+      }
     }catch(_){ }
   }catch(error){
     if(error.status!==401&&error.status!==403){
@@ -988,16 +997,20 @@ async function refreshAccount(){
 async function checkPaymentAvailability(){
   const button=$("premiumBuy");
   if(!button)return;
+  const pixButton=$("pixBuy");
   button.disabled=true;
+  if(pixButton)pixButton.disabled=true;
   try{
     const response=await fetch(AUTH_BASE+"/health",{cache:"no-store"});
     const data=await response.json().catch(()=>({}));
     paymentsConfigured=Boolean(response.ok&&data.paymentsConfigured);
     button.disabled=!paymentsConfigured;
+    if(pixButton)pixButton.disabled=!paymentsConfigured;
     if(!paymentsConfigured)$("paymentFeedback").textContent="Checkout temporariamente indisponível. Tente novamente mais tarde.";
     else if($("paymentFeedback").textContent.includes("Checkout temporariamente"))$("paymentFeedback").textContent="";
   }catch(_){
     paymentsConfigured=false;button.disabled=true;
+    if(pixButton)pixButton.disabled=true;
     $("paymentFeedback").textContent="Checkout temporariamente indisponível. Tente novamente mais tarde.";
   }
 }
@@ -1015,6 +1028,104 @@ async function startCheckout(){
     $("paymentFeedback").textContent=error.message;
     button.disabled=!paymentsConfigured;button.textContent="Desbloquear com Mercado Pago";
   }
+}
+function displayPixPayment(payment){
+  if(!payment||!payment.qrCode||!payment.qrCodeBase64)return false;
+  if(!/^[A-Za-z0-9+/]+={0,2}$/.test(payment.qrCodeBase64))return false;
+  const panel=$("pixPaymentPanel");
+  const image=$("pixQrImage");
+  panel.hidden=false;
+  image.src="data:image/png;base64,"+payment.qrCodeBase64;
+  image.hidden=false;
+  $("pixCopyCode").value=payment.qrCode;
+  const ticket=$("pixTicketLink");
+  try{
+    const url=new URL(payment.ticketUrl||"");
+    if(url.protocol==="https:"&&url.hostname==="www.mercadopago.com.br"&&url.pathname.startsWith("/payments/")){
+      ticket.href=url.href;
+      ticket.hidden=false;
+    }else ticket.hidden=true;
+  }catch(_){ticket.hidden=true;}
+  $("pixPaymentStatus").textContent="Pix de R$ 15,00 aguardando pagamento. O acesso será liberado automaticamente após a confirmação do Mercado Pago.";
+  return true;
+}
+function stopPixPolling(){
+  if(pixPollTimer)clearTimeout(pixPollTimer);
+  pixPollTimer=null;
+  pixPollActive=false;
+}
+function startPixPolling(){
+  if(pixPollActive||pixPollTimer)return;
+  pixPollActive=true;
+  const deadline=Date.now()+180000;
+  const poll=async()=>{
+    try{
+      const status=await authRequest("/payments/status","GET");
+      if(status.lifetimeAccess){
+        stopPixPolling();
+        await refreshAccount();
+        return;
+      }
+      if(status.pixPayment)displayPixPayment(status.pixPayment);
+    }catch(_){ }
+    if(Date.now()>=deadline){
+      pixPollActive=false;
+      pixPollTimer=null;
+      if(!$("pixPaymentPanel").hidden){
+        $("pixPaymentStatus").textContent="Ainda aguardando a confirmação automática. Se você já pagou, toque em “Já paguei — verificar”.";
+      }
+      return;
+    }
+    pixPollTimer=setTimeout(poll,5000);
+  };
+  poll();
+}
+async function startPixCheckout(){
+  if(!getAuthToken()){requestPremiumAccess("Entre ou crie sua conta para comprar o acesso vitalício.");return;}
+  if(lifetimeAccess){await refreshAccount();return;}
+  if(!paymentsConfigured){$("paymentFeedback").textContent="Checkout temporariamente indisponível. Tente novamente mais tarde.";return;}
+  const button=$("pixBuy");
+  button.disabled=true;
+  button.textContent="Gerando QR Code…";
+  $("paymentFeedback").textContent="";
+  try{
+    const data=await authRequest("/payments/pix","POST",{});
+    if(data.lifetimeAccess){await refreshAccount();return;}
+    if(!displayPixPayment(data.pixPayment))throw new Error("O Mercado Pago não retornou um QR Code Pix válido.");
+    pendingPaymentReturn=true;
+    $("pixPaymentStatus").textContent="Escaneie o QR Code com o app do seu banco ou copie o Pix. O acesso ficará vinculado à conta conectada e será liberado após a confirmação.";
+    startPixPolling();
+  }catch(error){
+    $("paymentFeedback").textContent=error.message;
+  }finally{
+    button.disabled=!paymentsConfigured;
+    button.textContent="Pagar com Pix · QR Code";
+  }
+}
+async function copyPixCode(){
+  const code=$("pixCopyCode").value;
+  if(!code)return;
+  try{
+    await navigator.clipboard.writeText(code);
+  }catch(_){
+    const field=$("pixCopyCode");
+    field.focus();field.select();
+    try{document.execCommand("copy");}catch(__){}
+  }
+  const button=$("copyPixCode");
+  button.textContent="Código Pix copiado";
+  setTimeout(()=>{button.textContent="Copiar código Pix";},2200);
+}
+async function checkPixStatusNow(){
+  const button=$("pixCheckNow");
+  button.disabled=true;
+  try{
+    await refreshAccount();
+    if(!lifetimeAccess){
+      $("pixPaymentStatus").textContent="Ainda aguardando a confirmação do Mercado Pago. A tela será atualizada automaticamente.";
+      startPixPolling();
+    }
+  }finally{button.disabled=false;}
 }
 async function handlePaymentReturn(){
   const returnState=new URLSearchParams(window.location.search).get("mp_return");
@@ -1066,6 +1177,9 @@ $("accountClose").addEventListener("click",closeAccount);
 $("accountBackdrop").addEventListener("click",closeAccount);
 $("accountSwitch").addEventListener("click",function(){openAccount(accountMode==="register"?"login":"register");});
 $("premiumBuy").addEventListener("click",startCheckout);
+$("pixBuy").addEventListener("click",startPixCheckout);
+$("copyPixCode").addEventListener("click",copyPixCode);
+$("pixCheckNow").addEventListener("click",checkPixStatusNow);
 $("accountForm").addEventListener("submit",async function(event){
   event.preventDefault();
   const email=$("accountEmail").value.trim().toLowerCase();

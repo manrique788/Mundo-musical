@@ -394,6 +394,17 @@ body {
 .premium-offer > p { margin: 9px 0 0; color: #bdc9c1 !important; font-size: 12px !important; line-height: 1.55; }
 .premium-offer .premium-offer-button { margin-top: 15px; }
 .premium-offer .payment-feedback { min-height: 0; margin-bottom: 0; color: #d6e4da !important; }
+.premium-offer .premium-pix-button { background: linear-gradient(135deg, #9ce7bb, #62bd89) !important; color: #092116 !important; }
+.pix-payment-panel { margin-top: 16px; padding: 15px; border: 1px solid rgba(126,220,164,.3); border-radius: 15px; background: rgba(28,82,53,.17); }
+.pix-payment-panel[hidden] { display: none; }
+.pix-payment-panel label { display: block; margin: 12px 0 6px; color: #dcebe1; font-size: 11px; font-weight: 700; }
+.pix-payment-status { margin: 0 0 12px; color: #d6e4da !important; font-size: 12px !important; line-height: 1.5; }
+.pix-qr-image { display: block; width: min(220px, 100%); height: auto; margin: 0 auto 12px; padding: 9px; border-radius: 12px; background: #fff; }
+.pix-payment-panel textarea { display: block; width: 100%; min-height: 78px; resize: vertical; padding: 10px; border: 1px solid rgba(226,235,229,.18); border-radius: 10px; background: rgba(7,13,12,.7); color: #f4f7ff; font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.pix-payment-panel .account-submit { width: 100%; margin-top: 10px; }
+.pix-payment-panel .pix-copy-button { background: rgba(148,194,165,.18) !important; color: #e2f2e7 !important; box-shadow: none; }
+.pix-payment-panel .pix-check-button { background: rgba(255,255,255,.08) !important; color: #e2ebe5 !important; box-shadow: none; }
+.pix-ticket-link { display: block; margin-top: 12px; color: #a8e3bf; font-size: 12px; text-align: center; }
 .premium-active { margin: 16px 0; padding: 16px; border: 1px solid rgba(169,203,189,.28); border-radius: 16px; background: rgba(169,203,189,.09); }
 .premium-active strong { color: var(--accent-bright); }
 .premium-active p { margin: 7px 0 0; }
