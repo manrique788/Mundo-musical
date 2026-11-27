@@ -113,6 +113,49 @@ async function authenticate(request, env) {
   ).bind(tokenHash, new Date().toISOString()).first();
 }
 
+function validFavoriteFolderKey(value) {
+  if (typeof value !== "string" || value.length < 1 || value.length > 1024) return false;
+  if (/[\u0000-\u001f\u007f]/.test(value)) return false;
+  return value === "R" || value.startsWith("P");
+}
+
+async function folderFavorites(request, env) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ error: "Autenticação necessária" }, 401);
+
+  if (request.method === "GET") {
+    const rows = await env.DB.prepare(
+      `SELECT folder_key FROM user_favorite_folders
+       WHERE user_id = ?
+       ORDER BY created_at DESC, folder_key ASC`
+    ).bind(user.id).all();
+    return json({ favorites: (rows.results || []).map(row => row.folder_key) });
+  }
+
+  if (request.method !== "POST") return json({ error: "Use GET ou POST" }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: "Corpo JSON inválido" }, 400); }
+  if (!validFavoriteFolderKey(body && body.folderKey) || typeof (body && body.favorite) !== "boolean") {
+    return json({ error: "Pasta favorita inválida" }, 400);
+  }
+
+  const folderKey = body.folderKey;
+  if (body.favorite) {
+    await env.DB.prepare(
+      `INSERT INTO user_favorite_folders (user_id, folder_key)
+       VALUES (?, ?)
+       ON CONFLICT (user_id, folder_key) DO NOTHING`
+    ).bind(user.id, folderKey).run();
+  } else {
+    await env.DB.prepare(
+      `DELETE FROM user_favorite_folders
+       WHERE user_id = ? AND folder_key = ?`
+    ).bind(user.id, folderKey).run();
+  }
+  return json({ ok: true, folderKey, favorite: body.favorite });
+}
+
 async function hasLifetimeAccess(env, userId) {
   if (!userId) return false;
   const entitlement = await env.DB.prepare(
@@ -1348,6 +1391,7 @@ async function route(request, env) {
   if (path === "/auth/me") return request.method === "GET" ? accountDetails(request, env) : json({ error: "Use GET" }, 405);
   if (path === "/auth/logout") return request.method === "POST" ? logout(request, env) : json({ error: "Use POST" }, 405);
   if (path === "/catalog") return request.method === "GET" ? catalog(request, env, url) : json({ error: "Use GET" }, 405);
+  if (path === "/favorites/folders") return folderFavorites(request, env);
   if (path.startsWith("/stream/") && ["GET", "HEAD"].includes(request.method)) return streamAuthorized(request, env, url);
   if (path === "/payments/pix") return request.method === "POST" ? pixCheckout(request, env) : json({ error: "Use POST" }, 405);
   if (path === "/payments/checkout") return request.method === "POST" ? checkout(request, env) : json({ error: "Use POST" }, 405);

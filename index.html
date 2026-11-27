@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=99">
-<link rel="stylesheet" href="premium-refresh.css?v=5">
+<link rel="stylesheet" href="premium-refresh.css?v=7">
 <title>MUSIC VIP — Sua música, seu ritmo</title>
 </head>
 <body>
@@ -57,7 +57,7 @@
         <label class="library-search"><span>⌕</span><input id="folderSearch" type="search" placeholder="Buscar pasta ou gênero..." autocomplete="off" aria-label="Buscar pasta ou gênero"></label>
       </div>
       <div class="genre-browser-meta"><span class="folder-total" id="folderTotal">Carregando pastas</span></div>
-      <div class="genre-tabs" id="genreTabs" role="group" aria-label="Filtrar pastas por gênero" hidden></div>
+      <div class="genre-tabs" id="genreTabs" role="group" aria-label="Filtrar pastas da biblioteca" hidden></div>
     </section>
     <div class="folder-grid folder-list" id="genreCards">
       <div class="loading-card">Conectando à biblioteca musical...</div>
@@ -190,7 +190,7 @@
   </style>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" crossorigin="anonymous"></script>
-<script src="app.js?v=109"></script>
+<script src="app.js?v=111"></script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', function(){navigator.serviceWorker.register('./sw.js').catch(function(error){console.warn('PWA:',error);});});
 </script>

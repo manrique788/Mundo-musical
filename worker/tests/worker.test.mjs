@@ -122,6 +122,145 @@ function authenticatedEnvironment({ entitled = false, sessionActive = true, obje
   return { env, user, state, getStreamAuthorizationQueryCount: () => streamAuthorizationQueries };
 }
 
+function favoriteFoldersEnvironment({ userId = "user-1", store = new Map() } = {}) {
+  const env = testEnvironment();
+  const user = { id: userId, email: userId + "@example.com", session_id: "session-" + userId, expires_at: "2099-01-01T00:00:00.000Z" };
+  let favoriteReads = 0;
+  let favoriteWrites = 0;
+  env.DB = {
+    prepare(sql) {
+      return {
+        bind(...values) {
+          return {
+            async first() { return sql.includes("JOIN users") ? user : null; },
+            async all() {
+              if (!sql.includes("FROM user_favorite_folders")) return { results: [] };
+              favoriteReads++;
+              const saved = store.get(values[0]) || new Set();
+              return { results: Array.from(saved, folder_key => ({ folder_key })) };
+            },
+            async run() {
+              if (sql.startsWith("INSERT INTO user_favorite_folders")) {
+                favoriteWrites++;
+                if (!store.has(values[0])) store.set(values[0], new Set());
+                store.get(values[0]).add(values[1]);
+              } else if (sql.startsWith("DELETE FROM user_favorite_folders")) {
+                favoriteWrites++;
+                if (store.has(values[0])) store.get(values[0]).delete(values[1]);
+              }
+              return { meta: { changes: 1 } };
+            }
+          };
+        }
+      };
+    }
+  };
+  return { env, user, store, getFavoriteReadCount: () => favoriteReads, getFavoriteWriteCount: () => favoriteWrites };
+}
+
+test("favoritos de pastas exigem sessão, mas não acesso vitalício", async () => {
+  const fixture = favoriteFoldersEnvironment();
+  const url = "https://worker.example/favorites/folders";
+  const unauthenticatedGet = await musicWorker.fetch(new Request(url), fixture.env);
+  assert.equal(unauthenticatedGet.status, 401);
+  const unauthenticatedPost = await musicWorker.fetch(new Request(url, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folderKey: "PSertanejo/Disco 1", favorite: true })
+  }), fixture.env);
+  assert.equal(unauthenticatedPost.status, 401);
+  assert.equal(fixture.getFavoriteReadCount(), 0);
+  assert.equal(fixture.getFavoriteWriteCount(), 0);
+
+  const headers = { Authorization: "Bearer session-token" };
+  const getResponse = await musicWorker.fetch(new Request(url, { headers }), fixture.env);
+  assert.equal(getResponse.status, 200);
+  assert.deepEqual((await getResponse.json()).favorites, []);
+  const postResponse = await musicWorker.fetch(new Request(url, {
+    method: "POST", headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ folderKey: "PSertanejo/Disco 1", favorite: true })
+  }), fixture.env);
+  assert.equal(postResponse.status, 200);
+  assert.equal((await postResponse.json()).favorite, true);
+});
+
+test("favoritos de pastas são idempotentes ao marcar e desmarcar", async () => {
+  const fixture = favoriteFoldersEnvironment();
+  const url = "https://worker.example/favorites/folders";
+  const headers = { Authorization: "Bearer session-token", "Content-Type": "application/json" };
+  async function setFavorite(favorite) {
+    return musicWorker.fetch(new Request(url, {
+      method: "POST", headers,
+      body: JSON.stringify({ folderKey: "PSertanejo/Disco 1", favorite })
+    }), fixture.env);
+  }
+  assert.equal((await setFavorite(true)).status, 200);
+  assert.equal((await setFavorite(true)).status, 200);
+  assert.deepEqual(Array.from(fixture.store.get("user-1")), ["PSertanejo/Disco 1"]);
+  assert.equal((await setFavorite(false)).status, 200);
+  assert.equal((await setFavorite(false)).status, 200);
+  assert.deepEqual(Array.from(fixture.store.get("user-1")), []);
+});
+
+test("favoritos ficam isolados por usuário e ignoram userId enviado pelo cliente", async () => {
+  const store = new Map([
+    ["user-1", new Set(["PFunk/Clássicos"])],
+    ["user-2", new Set(["PPagode/Volume 1"])]
+  ]);
+  const first = favoriteFoldersEnvironment({ userId: "user-1", store });
+  const second = favoriteFoldersEnvironment({ userId: "user-2", store });
+  const url = "https://worker.example/favorites/folders";
+  const firstResponse = await musicWorker.fetch(new Request(url, {
+    headers: { Authorization: "Bearer user-one-token" }
+  }), first.env);
+  const secondResponse = await musicWorker.fetch(new Request(url, {
+    headers: { Authorization: "Bearer user-two-token" }
+  }), second.env);
+  assert.deepEqual((await firstResponse.json()).favorites, ["PFunk/Clássicos"]);
+  assert.deepEqual((await secondResponse.json()).favorites, ["PPagode/Volume 1"]);
+
+  const added = await musicWorker.fetch(new Request(url, {
+    method: "POST",
+    headers: { Authorization: "Bearer user-one-token", "Content-Type": "application/json" },
+    body: JSON.stringify({ folderKey: "PPagode/Volume 1", favorite: true, userId: "user-2" })
+  }), first.env);
+  assert.equal(added.status, 200);
+  assert.equal(store.get("user-1").has("PPagode/Volume 1"), true);
+  assert.deepEqual(Array.from(store.get("user-2")), ["PPagode/Volume 1"]);
+});
+
+test("chaves opacas distinguem a raiz e preservam o caminho bruto da pasta", async () => {
+  const fixture = favoriteFoldersEnvironment();
+  const url = "https://worker.example/favorites/folders";
+  const headers = { Authorization: "Bearer session-token", "Content-Type": "application/json" };
+  for (const folderKey of ["R", "PRock//Anos 80", "POutros\\Noites"]) {
+    const response = await musicWorker.fetch(new Request(url, {
+      method: "POST", headers, body: JSON.stringify({ folderKey, favorite: true })
+    }), fixture.env);
+    assert.equal(response.status, 200);
+  }
+  assert.deepEqual(Array.from(fixture.store.get("user-1")), ["R", "PRock//Anos 80", "POutros\\Noites"]);
+});
+
+test("API de favoritos rejeita folderKey inválido, booleans ausentes e métodos não permitidos", async () => {
+  const fixture = favoriteFoldersEnvironment();
+  const url = "https://worker.example/favorites/folders";
+  const headers = { Authorization: "Bearer session-token", "Content-Type": "application/json" };
+  for (const body of [
+    { folderKey: "", favorite: true },
+    { folderKey: "Sertanejo/../outra", favorite: true },
+    { folderKey: "Zrock/Disco", favorite: true },
+    { folderKey: "Pbad\nkey", favorite: true },
+    { folderKey: "P" + "x".repeat(1024), favorite: true },
+    { folderKey: "PSertanejo/Disco", favorite: "true" }
+  ]) {
+    const response = await musicWorker.fetch(new Request(url, { method: "POST", headers, body: JSON.stringify(body) }), fixture.env);
+    assert.equal(response.status, 400);
+  }
+  const methodResponse = await musicWorker.fetch(new Request(url, { method: "DELETE", headers }), fixture.env);
+  assert.equal(methodResponse.status, 405);
+  assert.equal(fixture.getFavoriteWriteCount(), 0);
+});
+
 function paymentReconciliationEnvironment() {
   const env = testEnvironment();
   const user = { id: "user-1", email: "test@example.com", session_id: "session-1", expires_at: "2099-01-01T00:00:00.000Z" };

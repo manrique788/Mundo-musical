@@ -1,5 +1,5 @@
-const CACHE_NAME = 'music-premium-v94-pix-qr';
-const APP_SHELL = ['./','./index.html','./style.css?v=99','./premium-refresh.css?v=5','./app.js?v=109','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
+const CACHE_NAME = 'music-premium-v96-folder-favorites';
+const APP_SHELL = ['./','./index.html','./style.css?v=99','./premium-refresh.css?v=7','./app.js?v=111','./manifest.webmanifest','./icons/user-logo-192.png','./icons/user-logo-512.png'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });

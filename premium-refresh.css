@@ -624,3 +624,96 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+
+/* O botão nativo de abrir fica sob as ações independentes do card. */
+.folder-open-button {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.folder-open-button:hover { transform: none; background: transparent; color: transparent; box-shadow: none; }
+.folder-open-button:focus-visible { outline: 2px solid #d7ff83; outline-offset: -4px; }
+.folder-art, .folder-name, .folder-count, .folder-access-badge, .folder-arrow { pointer-events: none; }
+.folder-menu-wrap, .folder-download { z-index: 3; }
+.folder-download { padding: 0; appearance: none; }
+
+/* Ações de favoritos de pastas */
+.folder-card.folder-menu-open { overflow: visible; z-index: 20; }
+.folder-menu-popover:not([hidden]) {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 178px;
+  padding: 8px;
+  border: 1px solid rgba(215, 255, 131, .2);
+  border-radius: 13px;
+  background: rgba(17, 22, 24, .97);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .48);
+  backdrop-filter: blur(16px);
+}
+.folder-menu-popover button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 36px;
+  height: auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .055);
+  color: #e8eee9;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.folder-menu-popover .folder-favorite-action {
+  border-color: rgba(215, 255, 131, .35);
+  background: rgba(215, 255, 131, .08);
+  color: #d7ff83;
+}
+.folder-menu-popover .folder-favorite-action:hover:not(:disabled) {
+  background: #d7ff83;
+  color: #151a0d;
+}
+.folder-menu-popover .folder-delete-action {
+  border-color: rgba(255, 157, 165, .28);
+  background: rgba(227, 77, 90, .09);
+  color: #ffb4ba;
+}
+.folder-menu-popover .folder-delete-action:hover {
+  background: #e34d5a;
+  color: #fff;
+}
+.folder-menu-popover button:disabled { opacity: .58; cursor: wait; }
+.folder-menu:focus-visible, .folder-menu-popover button:focus-visible {
+  outline: 2px solid #d7ff83;
+  outline-offset: 3px;
+}
+.folder-favorite-indicator {
+  display: inline-block;
+  margin-left: 7px;
+  color: #d7ff83;
+  font-size: .88em;
+  vertical-align: .04em;
+}
+@media (max-width: 600px) {
+  #genreCards.folder-list .folder-menu-popover { left: auto; right: 0; }
+}
